@@ -1,16 +1,16 @@
 #include "vv_world.h"
 
-world_s *_world_ptr = NULL;						// Указатель на используемый мир
-const uint32_t transparent_color = 0x00000000;	// Инициализация прозрачного цвета
+world_s *_world_ptr = NULL;						// РЈРєР°Р·Р°С‚РµР»СЊ РЅР° РёСЃРїРѕР»СЊР·СѓРµРјС‹Р№ РјРёСЂ
+const uint32_t transparent_color = 0x00000000;	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїСЂРѕР·СЂР°С‡РЅРѕРіРѕ С†РІРµС‚Р°
 
 world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_s back_color ) {
-	// Выделение памяти под структуру
+	// Р’С‹РґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё РїРѕРґ СЃС‚СЂСѓРєС‚СѓСЂСѓ
 	world_s *world_ptr = malloc( sizeof( world_s ) );
 
-	// Выделение памяти под ячейки мира
+	// Р’С‹РґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё РїРѕРґ СЏС‡РµР№РєРё РјРёСЂР°
 	world_ptr->cell = malloc( size_x * size_y * sizeof( cell_s ) );
 
-	// Установка параметров мира
+	// РЈСЃС‚Р°РЅРѕРІРєР° РїР°СЂР°РјРµС‚СЂРѕРІ РјРёСЂР°
 	world_ptr->size_x = size_x;
 	world_ptr->size_y = size_y;
 	world_ptr->background_color = back_color;
@@ -19,15 +19,15 @@ world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_s back_color )
 }	// vv_create_world
 
 void vv_destroy_world( world_s *world_ptr ) {
-	// Если указатель валиден
+	// Р•СЃР»Рё СѓРєР°Р·Р°С‚РµР»СЊ РІР°Р»РёРґРµРЅ
 	if ( world_ptr ) {
-		free( world_ptr->cell );	// Удаление массива ячеек
-		free( world_ptr );			// Удаление структуры мира
+		free( world_ptr->cell );	// РЈРґР°Р»РµРЅРёРµ РјР°СЃСЃРёРІР° СЏС‡РµРµРє
+		free( world_ptr );			// РЈРґР°Р»РµРЅРёРµ СЃС‚СЂСѓРєС‚СѓСЂС‹ РјРёСЂР°
 	}	// if world_ptr
 }	// vv_destroy_world
 
 void vv_set_world( world_s *world_ptr ) {
-	// Установка указателя
+	// РЈСЃС‚Р°РЅРѕРІРєР° СѓРєР°Р·Р°С‚РµР»СЏ
 	_world_ptr = world_ptr;
 }	// vv_set_world
 
@@ -45,44 +45,44 @@ void vv_cell_calc_height( cell_s *cell_ptr ) {
 }	// vv_cell_calc_height
 
 bool vv_cell_optimize( cell_s *cell_ptr ) {
-	// Флаг оптимизации
+	// Р¤Р»Р°Рі РѕРїС‚РёРјРёР·Р°С†РёРё
 	bool opt_flag = false;
 
-	// Проход по сегментам в обратном направлении
+	// РџСЂРѕС…РѕРґ РїРѕ СЃРµРіРјРµРЅС‚Р°Рј РІ РѕР±СЂР°С‚РЅРѕРј РЅР°РїСЂР°РІР»РµРЅРёРё
 	for ( int8_t seg_id = ( cell_ptr->segment_count - 1 ); seg_id >= 0; seg_id-- ) {
-		// Сравнение цвета толькое если высота больше 0
+		// РЎСЂР°РІРЅРµРЅРёРµ С†РІРµС‚Р° С‚РѕР»СЊРєРѕРµ РµСЃР»Рё РІС‹СЃРѕС‚Р° Р±РѕР»СЊС€Рµ 0
 		if ( seg_id > 0 ) {
-			// Если цвета двух соседних сегментов совпадают
+			// Р•СЃР»Рё С†РІРµС‚Р° РґРІСѓС… СЃРѕСЃРµРґРЅРёС… СЃРµРіРјРµРЅС‚РѕРІ СЃРѕРІРїР°РґР°СЋС‚
 			if ( cell_ptr->segment[ seg_id ].color.word == cell_ptr->segment[ seg_id - 1 ].color.word ) {
-				// Перенос высоты на следующий сегмент
+				// РџРµСЂРµРЅРѕСЃ РІС‹СЃРѕС‚С‹ РЅР° СЃР»РµРґСѓСЋС‰РёР№ СЃРµРіРјРµРЅС‚
 				cell_ptr->segment[ seg_id - 1 ].height += cell_ptr->segment[ seg_id ].height;
 
-				// Обнуление высоты текущего сегмента
+				// РћР±РЅСѓР»РµРЅРёРµ РІС‹СЃРѕС‚С‹ С‚РµРєСѓС‰РµРіРѕ СЃРµРіРјРµРЅС‚Р°
 				cell_ptr->segment[ seg_id ].height = 0;
 			}	// if
 		}	// if seg_id
 
-		// Удаление сегмента, если его высота нулевая
+		// РЈРґР°Р»РµРЅРёРµ СЃРµРіРјРµРЅС‚Р°, РµСЃР»Рё РµРіРѕ РІС‹СЃРѕС‚Р° РЅСѓР»РµРІР°СЏ
 		if ( !( cell_ptr->segment[ seg_id ].height ) ) {
 			vv_cell_remove_segment( cell_ptr, seg_id );
-			opt_flag = true;	// Была произведена оптимизация
+			opt_flag = true;	// Р‘С‹Р»Р° РїСЂРѕРёР·РІРµРґРµРЅР° РѕРїС‚РёРјРёР·Р°С†РёСЏ
 		}	// if
 	}	// for seg_id
 	return opt_flag;
 }	// vv_cell_optimize
 
 bool vv_cell_push_back( cell_s *cell_ptr, uint8_t height ) {
-	// Результат выполнения операции
+	// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
 	bool result = true;
 
-	// Если количество сегментов позволяет сделать вставку
+	// Р•СЃР»Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРіРјРµРЅС‚РѕРІ РїРѕР·РІРѕР»СЏРµС‚ СЃРґРµР»Р°С‚СЊ РІСЃС‚Р°РІРєСѓ
 	if ( cell_ptr->segment_count < CELL_SEGMENT_COUNT ) {
-		// Получение указателя на сегмент и установка параметров
+		// РџРѕР»СѓС‡РµРЅРёРµ СѓРєР°Р·Р°С‚РµР»СЏ РЅР° СЃРµРіРјРµРЅС‚ Рё СѓСЃС‚Р°РЅРѕРІРєР° РїР°СЂР°РјРµС‚СЂРѕРІ
 		segment_s *seg_ptr = &( cell_ptr->segment[ cell_ptr->segment_count++ ] );
 		seg_ptr->color.word = transparent_color;
 		seg_ptr->height		= height;
 
-		// Обновление общей высоты и количества сегментов
+		// РћР±РЅРѕРІР»РµРЅРёРµ РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ Рё РєРѕР»РёС‡РµСЃС‚РІР° СЃРµРіРјРµРЅС‚РѕРІ
 		cell_ptr->segment_count++;
 		cell_ptr->segment_height_total += height;
 	} else
@@ -91,20 +91,20 @@ bool vv_cell_push_back( cell_s *cell_ptr, uint8_t height ) {
 }	// vv_cell_push_back
 
 bool vv_cell_push_front( cell_s *cell_ptr, uint8_t height ) {
-	// Результат выполнения операции
+	// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
 	bool result = true;
 
-	// Если количество сегментов позволяет сделать вставку
+	// Р•СЃР»Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРіРјРµРЅС‚РѕРІ РїРѕР·РІРѕР»СЏРµС‚ СЃРґРµР»Р°С‚СЊ РІСЃС‚Р°РІРєСѓ
 	if ( cell_ptr->segment_count < CELL_SEGMENT_COUNT ) {
-		// Сдвиг всех сегментов вверх
+		// РЎРґРІРёРі РІСЃРµС… СЃРµРіРјРµРЅС‚РѕРІ РІРІРµСЂС…
 		for ( int8_t seg_id = ( cell_ptr->segment_count - 1 ); seg_id >= 0; seg_id-- )
 			cell_ptr->segment[ seg_id + 1 ] = cell_ptr->segment[ seg_id ];
 
-		// Инициализация нулевого сегмента
+		// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РЅСѓР»РµРІРѕРіРѕ СЃРµРіРјРµРЅС‚Р°
 		cell_ptr->segment[ 0 ].color.word	= transparent_color;
 		cell_ptr->segment[ 0 ].height		= height;
 
-		// Обновление общей высоты и количества сегментов
+		// РћР±РЅРѕРІР»РµРЅРёРµ РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ Рё РєРѕР»РёС‡РµСЃС‚РІР° СЃРµРіРјРµРЅС‚РѕРІ
 		cell_ptr->segment_count++;
 		cell_ptr->segment_height_total += height;
 	} else
@@ -124,99 +124,99 @@ void vv_write_cell_to_vb( cell_s *cell_ptr, voxel_buffer_s *vb_ptr ) {
 }	// vv_write_cell_to_vb
 
 bool vv_write_vb_to_cell( voxel_buffer_s *vb_ptr, cell_s *cell_ptr ) {
-	bool result = true;						// Результат выполнения операции
-	segment_s *seg_ptr = cell_ptr->segment;	// Указатель на сегмент
+	bool result = true;						// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
+	segment_s *seg_ptr = cell_ptr->segment;	// РЈРєР°Р·Р°С‚РµР»СЊ РЅР° СЃРµРіРјРµРЅС‚
 
-	// Обнуление высот ячейки мира
+	// РћР±РЅСѓР»РµРЅРёРµ РІС‹СЃРѕС‚ СЏС‡РµР№РєРё РјРёСЂР°
 	cell_ptr->segment_count			= 1;
 	cell_ptr->segment_height_total	= 0;
 
-	// Проверка наличия элементов в буфере вокселей
+	// РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ СЌР»РµРјРµРЅС‚РѕРІ РІ Р±СѓС„РµСЂРµ РІРѕРєСЃРµР»РµР№
 	if ( !vb_ptr->count )
 		goto lb_end;
 
-	// Инициализация нулевого сегмента ячейки
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РЅСѓР»РµРІРѕРіРѕ СЃРµРіРјРµРЅС‚Р° СЏС‡РµР№РєРё
 	seg_ptr->color.word	= vb_ptr->color->word;
 	seg_ptr->height		= 1;
 
-	// Последние адреса буфера вокселей и массива сегментов
+	// РџРѕСЃР»РµРґРЅРёРµ Р°РґСЂРµСЃР° Р±СѓС„РµСЂР° РІРѕРєСЃРµР»РµР№ Рё РјР°СЃСЃРёРІР° СЃРµРіРјРµРЅС‚РѕРІ
 	color_s *end_color_addr = ( vb_ptr->color + vb_ptr->count );
 	segment_s *end_seg_addr = ( cell_ptr->segment + CELL_SEGMENT_COUNT );
 
-	// Цикл по буферу вокселей с первого элемента
+	// Р¦РёРєР» РїРѕ Р±СѓС„РµСЂСѓ РІРѕРєСЃРµР»РµР№ СЃ РїРµСЂРІРѕРіРѕ СЌР»РµРјРµРЅС‚Р°
 	color_s *color_ptr = ( vb_ptr->color + 1 );
 	while ( color_ptr < end_color_addr ) {
 		if ( color_ptr->word ^ seg_ptr->color.word ) {
-			// Обновление общей высоты ячейки мира
+			// РћР±РЅРѕРІР»РµРЅРёРµ РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ СЏС‡РµР№РєРё РјРёСЂР°
 			cell_ptr->segment_height_total += seg_ptr->height;
 
-			// Переход к следующему сегменту
+			// РџРµСЂРµС…РѕРґ Рє СЃР»РµРґСѓСЋС‰РµРјСѓ СЃРµРіРјРµРЅС‚Сѓ
 			if ( ++seg_ptr < end_seg_addr ) {
 				cell_ptr->segment_count++;
 				seg_ptr->color.word	= color_ptr->word;
 				seg_ptr->height	= 1;
 			} else {
-				// Количество цветов превышено
+				// РљРѕР»РёС‡РµСЃС‚РІРѕ С†РІРµС‚РѕРІ РїСЂРµРІС‹С€РµРЅРѕ
 				result = false;
 				goto lb_end;
 			}	// if seg_ptr
 		} else
-			// Цвет не изменился, увеличение высоты
+			// Р¦РІРµС‚ РЅРµ РёР·РјРµРЅРёР»СЃСЏ, СѓРІРµР»РёС‡РµРЅРёРµ РІС‹СЃРѕС‚С‹
 			seg_ptr->height++;
-		// Переход к следующему элементу буфера
+		// РџРµСЂРµС…РѕРґ Рє СЃР»РµРґСѓСЋС‰РµРјСѓ СЌР»РµРјРµРЅС‚Сѓ Р±СѓС„РµСЂР°
 		color_ptr++;
 	}	// while color ptr
 
-	// Обновление общей высоты ячейки мира
+	// РћР±РЅРѕРІР»РµРЅРёРµ РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ СЏС‡РµР№РєРё РјРёСЂР°
 	cell_ptr->segment_height_total += seg_ptr->height;
 
 lb_end:
 	return result;
 }	// vv_write_cb_to_cell
 
-// Внутренняя функция смешивания цветов.
-// Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
-// Используется в vv_cell_merge
+// Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ С„СѓРЅРєС†РёСЏ СЃРјРµС€РёРІР°РЅРёСЏ С†РІРµС‚РѕРІ.
+// РџСЂРёРЅРёРјР°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° С†РІРµС‚ dst, С†РІРµС‚ src Рё РїСЂРёР·РЅР°Рє СЃРјРµС€РёРІР°РЅРёСЏ РЅРµРїСЂРѕР·СЂР°С‡РЅС‹С… С†РІРµС‚РѕРІ
+// РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ vv_cell_merge
 void _color_merge_add( color_s *dst_color, color_s *src_color, bool ow_flag ) {
 	if ( ( ow_flag && ( src_color->word != transparent_color ) ) || ( dst_color->word == transparent_color ) )
 		*dst_color = *src_color;
 }	// _color_merge_add
 
-// Внутренняя функция вырезания цветов.
-// Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
-// Используется в vv_cell_merge
+// Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ С„СѓРЅРєС†РёСЏ РІС‹СЂРµР·Р°РЅРёСЏ С†РІРµС‚РѕРІ.
+// РџСЂРёРЅРёРјР°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° С†РІРµС‚ dst, С†РІРµС‚ src Рё РїСЂРёР·РЅР°Рє СЃРјРµС€РёРІР°РЅРёСЏ РЅРµРїСЂРѕР·СЂР°С‡РЅС‹С… С†РІРµС‚РѕРІ
+// РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ vv_cell_merge
 void _color_merge_sub( color_s *dst_color, color_s *src_color, bool ow_flag ) {
 	// if ( ( ow_flag && ( src_color->word != transparent_color ) ) || ( dst_color->word == transparent_color ) )
 	if ( dst_color->word == src_color->word )
 		dst_color->word = transparent_color;
 }	// _color_merge_sub
 
-// Внутренняя встроенная функция перехода к следующему сегменту. Пропускает сегменты с высотой 0.
-// Принимает указатель на ячейку мира и id текущего сегмента.
-// Возвращает id следующего непустого сегмента. Если таких сегментов нет, возвращает номер последнего или +1 сегмента.
-// Используется в vv_cell_merge
+// Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РІСЃС‚СЂРѕРµРЅРЅР°СЏ С„СѓРЅРєС†РёСЏ РїРµСЂРµС…РѕРґР° Рє СЃР»РµРґСѓСЋС‰РµРјСѓ СЃРµРіРјРµРЅС‚Сѓ. РџСЂРѕРїСѓСЃРєР°РµС‚ СЃРµРіРјРµРЅС‚С‹ СЃ РІС‹СЃРѕС‚РѕР№ 0.
+// РџСЂРёРЅРёРјР°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЏС‡РµР№РєСѓ РјРёСЂР° Рё id С‚РµРєСѓС‰РµРіРѕ СЃРµРіРјРµРЅС‚Р°.
+// Р’РѕР·РІСЂР°С‰Р°РµС‚ id СЃР»РµРґСѓСЋС‰РµРіРѕ РЅРµРїСѓСЃС‚РѕРіРѕ СЃРµРіРјРµРЅС‚Р°. Р•СЃР»Рё С‚Р°РєРёС… СЃРµРіРјРµРЅС‚РѕРІ РЅРµС‚, РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРѕРјРµСЂ РїРѕСЃР»РµРґРЅРµРіРѕ РёР»Рё +1 СЃРµРіРјРµРЅС‚Р°.
+// РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ vv_cell_merge
 uint8_t _get_next_segment( cell_s *cell_ptr, int8_t id ) {
 	do {
 		if ( id++ >= cell_ptr->segment_count ) {
 			id = cell_ptr->segment_count;
 			break;
 		}	// if seg count
-		// Проверка высоты сегмента
+		// РџСЂРѕРІРµСЂРєР° РІС‹СЃРѕС‚С‹ СЃРµРіРјРµРЅС‚Р°
 	} while ( !( cell_ptr->segment[ id ].height ) );
 	return ( uint8_t )( id );
 }	// _get_next_segment
 
 bool vv_cell_merge( cell_s *dst_cell, cell_s *src_cell, bool ow_flag, merge_mode_e mode ) {
-	// Ленивая инициализация массива функций по режимам слияния
+	// Р›РµРЅРёРІР°СЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РјР°СЃСЃРёРІР° С„СѓРЅРєС†РёР№ РїРѕ СЂРµР¶РёРјР°Рј СЃР»РёСЏРЅРёСЏ
 	static void ( *merge_func_array[ 2 ] )( color_s *, color_s *, bool ) = {
 		_color_merge_add,	// mm_addition
 		_color_merge_sub	// mm_substraction
 	};	// merge_func_array
 
-	// Результат выполнения операции
+	// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
 	bool merge_res = true;
 
-	// Приведение высоты ячейки dst к высоте src
+	// РџСЂРёРІРµРґРµРЅРёРµ РІС‹СЃРѕС‚С‹ СЏС‡РµР№РєРё dst Рє РІС‹СЃРѕС‚Рµ src
 	int16_t height_diff = ( src_cell->segment_height_total - dst_cell->segment_height_total );
 	if ( height_diff > 0 ) {
 		if ( !vv_cell_push_back( dst_cell, height_diff ) ) {
@@ -225,30 +225,30 @@ bool vv_cell_merge( cell_s *dst_cell, cell_s *src_cell, bool ow_flag, merge_mode
 		}	// if push_back
 	}	// if height_total
 
-	// Инициализация id сегмента dst
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ id СЃРµРіРјРµРЅС‚Р° dst
 	uint8_t dst_seg_id = _get_next_segment( dst_cell, -1 );
 
-	// Инициализация id сегмента src с проверкой номера сегмента
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ id СЃРµРіРјРµРЅС‚Р° src СЃ РїСЂРѕРІРµСЂРєРѕР№ РЅРѕРјРµСЂР° СЃРµРіРјРµРЅС‚Р°
 	uint8_t src_seg_id = _get_next_segment( src_cell, -1 );
 	if ( src_seg_id == src_cell->segment_count )
 		goto lb_cell_merge_end;
 
-	// Остаток высоты в текущем сегменте src
+	// РћСЃС‚Р°С‚РѕРє РІС‹СЃРѕС‚С‹ РІ С‚РµРєСѓС‰РµРј СЃРµРіРјРµРЅС‚Рµ src
 	int16_t src_h_least	= src_cell->segment[ src_seg_id ].height;
 
-	// Цикл по сегментам
+	// Р¦РёРєР» РїРѕ СЃРµРіРјРµРЅС‚Р°Рј
 	while ( dst_seg_id < dst_cell->segment_count ) {
-		// Обновление остатка высоты
+		// РћР±РЅРѕРІР»РµРЅРёРµ РѕСЃС‚Р°С‚РєР° РІС‹СЃРѕС‚С‹
 		src_h_least -= dst_cell->segment[ dst_seg_id ].height;
 
-		// Выбор по остатку высоты в сегменте src
+		// Р’С‹Р±РѕСЂ РїРѕ РѕСЃС‚Р°С‚РєСѓ РІС‹СЃРѕС‚С‹ РІ СЃРµРіРјРµРЅС‚Рµ src
 		if ( src_h_least > 0 )
-			// Высота src > высоты dst
-			// Смешивание цветов
+			// Р’С‹СЃРѕС‚Р° src > РІС‹СЃРѕС‚С‹ dst
+			// РЎРјРµС€РёРІР°РЅРёРµ С†РІРµС‚РѕРІ
 			merge_func_array[ mode ]( &( dst_cell->segment[ dst_seg_id ].color ), &( src_cell->segment[ src_seg_id ].color ), ow_flag );
 		else {
-			// Высота src <= высоты dst
-			// Если есть остаток высоты в src, сплит dst по разнице высот
+			// Р’С‹СЃРѕС‚Р° src <= РІС‹СЃРѕС‚С‹ dst
+			// Р•СЃР»Рё РµСЃС‚СЊ РѕСЃС‚Р°С‚РѕРє РІС‹СЃРѕС‚С‹ РІ src, СЃРїР»РёС‚ dst РїРѕ СЂР°Р·РЅРёС†Рµ РІС‹СЃРѕС‚
 			if ( src_h_least < 0 ) {
 				if ( !vv_cell_split_segment( dst_cell, dst_seg_id, ( dst_cell->segment[ dst_seg_id ].height + src_h_least ) ) ) {
 					merge_res = false;
@@ -256,19 +256,19 @@ bool vv_cell_merge( cell_s *dst_cell, cell_s *src_cell, bool ow_flag, merge_mode
 				}	// if split
 			}	// if src_h_least < 0
 
-			// Смешивание цветов
+			// РЎРјРµС€РёРІР°РЅРёРµ С†РІРµС‚РѕРІ
 			merge_func_array[ mode ]( &( dst_cell->segment[ dst_seg_id ].color ), &( src_cell->segment[ src_seg_id ].color ), ow_flag );
 
-			// Переход к следующему сегменту src
+			// РџРµСЂРµС…РѕРґ Рє СЃР»РµРґСѓСЋС‰РµРјСѓ СЃРµРіРјРµРЅС‚Сѓ src
 			src_seg_id = _get_next_segment( src_cell, src_seg_id );
 			if ( src_seg_id == src_cell->segment_count )
 				goto lb_cell_merge_end;
 
-			// Обновление оставшейся высоты в сегменте src
+			// РћР±РЅРѕРІР»РµРЅРёРµ РѕСЃС‚Р°РІС€РµР№СЃСЏ РІС‹СЃРѕС‚С‹ РІ СЃРµРіРјРµРЅС‚Рµ src
 			src_h_least	= src_cell->segment[ src_seg_id ].height;
 		}	// if src_h_least
 
-		// Переход к следующему сегменту dst
+		// РџРµСЂРµС…РѕРґ Рє СЃР»РµРґСѓСЋС‰РµРјСѓ СЃРµРіРјРµРЅС‚Сѓ dst
 		dst_seg_id = _get_next_segment( dst_cell, dst_seg_id );
 	}	// while dst_seg_id
 
@@ -277,40 +277,40 @@ lb_cell_merge_end:
 }	// vv_merge_cells
 
 int8_t vv_cell_read_segment( cell_s *cell_ptr, uint8_t height ) {
-	int8_t segment_id = -1;	// Результирующий id сегмента
-	uint8_t h_counter = 0;	// Счетчик высоты
+	int8_t segment_id = -1;	// Р РµР·СѓР»СЊС‚РёСЂСѓСЋС‰РёР№ id СЃРµРіРјРµРЅС‚Р°
+	uint8_t h_counter = 0;	// РЎС‡РµС‚С‡РёРє РІС‹СЃРѕС‚С‹
 	for ( uint8_t seg_id = 0; seg_id < cell_ptr->segment_count; seg_id++ ) {
 		uint8_t seg_height = cell_ptr->segment[ seg_id ].height;
 
-		// Проверка сегмента по высоте
+		// РџСЂРѕРІРµСЂРєР° СЃРµРіРјРµРЅС‚Р° РїРѕ РІС‹СЃРѕС‚Рµ
 		if ( ( h_counter + seg_height ) > height ) {
-			segment_id = seg_id;	// Сохранение id сегмента
+			segment_id = seg_id;	// РЎРѕС…СЂР°РЅРµРЅРёРµ id СЃРµРіРјРµРЅС‚Р°
 			break;
 		}	// if height
 
-		// Сохранение высоты сегмента
+		// РЎРѕС…СЂР°РЅРµРЅРёРµ РІС‹СЃРѕС‚С‹ СЃРµРіРјРµРЅС‚Р°
 		h_counter += seg_height;
 	}	// for segment
 	return segment_id;
 }	// vv_cell_read_segment
 
 bool vv_cell_insert_segment( cell_s *cell_ptr, uint8_t id, segment_s segment ) {
-	// Результат выполнения операции
+	// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
 	bool result = true;
 
-	// Если количество сегментов позволяет сделать вставку
+	// Р•СЃР»Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРіРјРµРЅС‚РѕРІ РїРѕР·РІРѕР»СЏРµС‚ СЃРґРµР»Р°С‚СЊ РІСЃС‚Р°РІРєСѓ
 	if ( cell_ptr->segment_count < CELL_SEGMENT_COUNT ) {
-		// Сдвиг всех старших сегментов вверх
+		// РЎРґРІРёРі РІСЃРµС… СЃС‚Р°СЂС€РёС… СЃРµРіРјРµРЅС‚РѕРІ РІРІРµСЂС…
 		for ( int8_t seg_id = ( cell_ptr->segment_count - 1 ); seg_id >= id; seg_id-- )
 			cell_ptr->segment[ seg_id + 1 ] = cell_ptr->segment[ seg_id ];
 
-		// Копирование сегмента
+		// РљРѕРїРёСЂРѕРІР°РЅРёРµ СЃРµРіРјРµРЅС‚Р°
 		cell_ptr->segment[ id ] = segment;
 
-		// Инкремент количества сегментов
+		// РРЅРєСЂРµРјРµРЅС‚ РєРѕР»РёС‡РµСЃС‚РІР° СЃРµРіРјРµРЅС‚РѕРІ
 		cell_ptr->segment_count++;
 
-		// Увеличение количества общей высоты ячейки
+		// РЈРІРµР»РёС‡РµРЅРёРµ РєРѕР»РёС‡РµСЃС‚РІР° РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ СЏС‡РµР№РєРё
 		cell_ptr->segment_height_total += segment.height;
 	} else
 		result = false;
@@ -318,20 +318,20 @@ bool vv_cell_insert_segment( cell_s *cell_ptr, uint8_t id, segment_s segment ) {
 }	// vv_cell_insert_segment
 
 bool vv_cell_split_segment( cell_s *cell_ptr, uint8_t id, uint8_t height ) {
-	// Результат выполнения операции
+	// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
 	bool result = true;
 
-	// Если задано корректное значение высоты и количество сегментов позволяет сделать вставку
+	// Р•СЃР»Рё Р·Р°РґР°РЅРѕ РєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РІС‹СЃРѕС‚С‹ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРіРјРµРЅС‚РѕРІ РїРѕР·РІРѕР»СЏРµС‚ СЃРґРµР»Р°С‚СЊ РІСЃС‚Р°РІРєСѓ
 	if ( height && ( height < cell_ptr->segment[ id ].height ) && ( cell_ptr->segment_count < CELL_SEGMENT_COUNT ) ) {
-		// Сдвиг всех старших сегментов вверх
+		// РЎРґРІРёРі РІСЃРµС… СЃС‚Р°СЂС€РёС… СЃРµРіРјРµРЅС‚РѕРІ РІРІРµСЂС…
 		for ( int8_t seg_id = ( cell_ptr->segment_count - 1 ); seg_id >= id; seg_id-- )
 			cell_ptr->segment[ seg_id + 1 ] = cell_ptr->segment[ seg_id ];
 
-		// Установка высоты разделенных сегментов. Итоговая высота не меняется
+		// РЈСЃС‚Р°РЅРѕРІРєР° РІС‹СЃРѕС‚С‹ СЂР°Р·РґРµР»РµРЅРЅС‹С… СЃРµРіРјРµРЅС‚РѕРІ. РС‚РѕРіРѕРІР°СЏ РІС‹СЃРѕС‚Р° РЅРµ РјРµРЅСЏРµС‚СЃСЏ
 		cell_ptr->segment[ id ].height		= height;
 		cell_ptr->segment[ id + 1 ].height	-= height;
 
-		// Инкремент количества сегментов ячейки
+		// РРЅРєСЂРµРјРµРЅС‚ РєРѕР»РёС‡РµСЃС‚РІР° СЃРµРіРјРµРЅС‚РѕРІ СЏС‡РµР№РєРё
 		cell_ptr->segment_count++;
 	} else
 		result = false;
@@ -339,22 +339,22 @@ bool vv_cell_split_segment( cell_s *cell_ptr, uint8_t id, uint8_t height ) {
 }	// vv_cell_split_segment
 
 bool vv_cell_remove_segment( cell_s *cell_ptr, uint8_t id ) {
-	// Результат выполнения операции
+	// Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё
 	bool result = true;
 
-	// Если задан корректный номер сегмента
+	// Р•СЃР»Рё Р·Р°РґР°РЅ РєРѕСЂСЂРµРєС‚РЅС‹Р№ РЅРѕРјРµСЂ СЃРµРіРјРµРЅС‚Р°
 	if ( id < cell_ptr->segment_count ) {
-		// Обновление общей высоты ячейки
+		// РћР±РЅРѕРІР»РµРЅРёРµ РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ СЏС‡РµР№РєРё
 		cell_ptr->segment_height_total -= cell_ptr->segment[ id ].height;
 
-		// Сдвиг всех сегментов
+		// РЎРґРІРёРі РІСЃРµС… СЃРµРіРјРµРЅС‚РѕРІ
 		while ( id < ( cell_ptr->segment_count - 1 ) ) {
-			// Сдвиг сегмента
+			// РЎРґРІРёРі СЃРµРіРјРµРЅС‚Р°
 			cell_ptr->segment[ id ] = cell_ptr->segment[ id + 1 ];
 			id++;
 		}	// while
 
-		// Удаление крайнего сегмента
+		// РЈРґР°Р»РµРЅРёРµ РєСЂР°Р№РЅРµРіРѕ СЃРµРіРјРµРЅС‚Р°
 		cell_ptr->segment[ --cell_ptr->segment_count ] = ( segment_s ){ 0 };
 	} else
 		result = false;
@@ -362,14 +362,14 @@ bool vv_cell_remove_segment( cell_s *cell_ptr, uint8_t id ) {
 }	// vv_cell_remove_segment
 
 color_s vv_cell_read_voxel( cell_s *cell_ptr, uint8_t height ) {
-	// Результирующий цвет вокселя
+	// Р РµР·СѓР»СЊС‚РёСЂСѓСЋС‰РёР№ С†РІРµС‚ РІРѕРєСЃРµР»СЏ
 	color_s color;
 	color.word = transparent_color;
 
-	// Получение id сегмента
+	// РџРѕР»СѓС‡РµРЅРёРµ id СЃРµРіРјРµРЅС‚Р°
 	int8_t segment_id = vv_cell_read_segment( cell_ptr, height );
 
-	// Если сегмент валиден, сохранение цвета
+	// Р•СЃР»Рё СЃРµРіРјРµРЅС‚ РІР°Р»РёРґРµРЅ, СЃРѕС…СЂР°РЅРµРЅРёРµ С†РІРµС‚Р°
 	if ( segment_id != -1 )
 		color = cell_ptr->segment[ segment_id ].color;
 	return color;

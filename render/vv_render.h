@@ -1,7 +1,7 @@
 #ifndef VV_RENDER_H_INCLUDED
 #define VV_RENDER_H_INCLUDED
 
-#include "vv_camera.h"
+#include "../core/vv_camera.h"
 
 /*
 	vv_render - модуль рендеринга. Осуществляет отрисовку мира во фреймбуфер.

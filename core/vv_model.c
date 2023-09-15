@@ -9,35 +9,35 @@ uint16_t vv_model_get_cell_count( model_s *model_ptr ) {
 }	// vv_model_get_cell_count
 
 void vv_model_free( model_s *model_ptr ) {
-	// Если указатель валиден, очистка памяти, выделенной под ячейки
+	// Р•СЃР»Рё СѓРєР°Р·Р°С‚РµР»СЊ РІР°Р»РёРґРµРЅ, РѕС‡РёСЃС‚РєР° РїР°РјСЏС‚Рё, РІС‹РґРµР»РµРЅРЅРѕР№ РїРѕРґ СЏС‡РµР№РєРё
 	if ( model_ptr )
 		free( model_ptr->cell );
 }	// vv_model_free
 
 bool vv_model_set_height( model_s *model_ptr, uint16_t height ) {
-	// Результат установки высоты модели
+	// Р РµР·СѓР»СЊС‚Р°С‚ СѓСЃС‚Р°РЅРѕРІРєРё РІС‹СЃРѕС‚С‹ РјРѕРґРµР»Рё
 	bool result = true;
 
-	// Проверка возможности изменения высоты модели
+	// РџСЂРѕРІРµСЂРєР° РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё РёР·РјРµРЅРµРЅРёСЏ РІС‹СЃРѕС‚С‹ РјРѕРґРµР»Рё
 	uint32_t max_height = ( model_ptr->size_z + height );
 	if ( ( bool )( max_height >> 8 ) ) {
 		result = false;
 		goto lb_set_height_end;
 	}	// if max_height
 
-	// Цикл по ячейкам модели
+	// Р¦РёРєР» РїРѕ СЏС‡РµР№РєР°Рј РјРѕРґРµР»Рё
 	for ( uint16_t x = 0; x < model_ptr->size_x; x++ )
 		for ( uint16_t y = 0; y < model_ptr->size_y; y++ ) {
-			// Получение указателя на ячейку модели
+			// РџРѕР»СѓС‡РµРЅРёРµ СѓРєР°Р·Р°С‚РµР»СЏ РЅР° СЏС‡РµР№РєСѓ РјРѕРґРµР»Рё
 			cell_s *cell = vv_model_get_cell( model_ptr, x, y );
 
-			// Получение общей высоты сегмента без нулевой
+			// РџРѕР»СѓС‡РµРЅРёРµ РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ СЃРµРіРјРµРЅС‚Р° Р±РµР· РЅСѓР»РµРІРѕР№
 			uint8_t h_buf = ( cell->segment_height_total - cell->segment[ 0 ].height );
 
-			// Установка высоты нулевого сегмента
+			// РЈСЃС‚Р°РЅРѕРІРєР° РІС‹СЃРѕС‚С‹ РЅСѓР»РµРІРѕРіРѕ СЃРµРіРјРµРЅС‚Р°
 			cell->segment[ 0 ].height = height;
 
-			// Установка общей высоты сегмента
+			// РЈСЃС‚Р°РЅРѕРІРєР° РѕР±С‰РµР№ РІС‹СЃРѕС‚С‹ СЃРµРіРјРµРЅС‚Р°
 			cell->segment_height_total = ( h_buf + height );
 		}	// for
 
@@ -46,23 +46,23 @@ lb_set_height_end:
 }	// vv_model_set_height
 
 bool vv_model_merge( model_s *model_ptr, bool ow_flag, bool opt_flag, merge_mode_e mode ) {
-	// Результат слияния модели с миром
+	// Р РµР·СѓР»СЊС‚Р°С‚ СЃР»РёСЏРЅРёСЏ РјРѕРґРµР»Рё СЃ РјРёСЂРѕРј
 	bool merge_result = true;
 
-	// Цикл по ячейкам модели
+	// Р¦РёРєР» РїРѕ СЏС‡РµР№РєР°Рј РјРѕРґРµР»Рё
 	for ( uint16_t x = 0; x < model_ptr->size_x; x++ )
 		for ( uint16_t y = 0; y < model_ptr->size_y; y++ ) {
-			// Получение указателя на ячейку модели
+			// РџРѕР»СѓС‡РµРЅРёРµ СѓРєР°Р·Р°С‚РµР»СЏ РЅР° СЏС‡РµР№РєСѓ РјРѕРґРµР»Рё
 			cell_s *model_cell = vv_model_get_cell( model_ptr, x, y );
 
-			// Получение указателя на ячейку мира
+			// РџРѕР»СѓС‡РµРЅРёРµ СѓРєР°Р·Р°С‚РµР»СЏ РЅР° СЏС‡РµР№РєСѓ РјРёСЂР°
 			cell_s *world_cell = vv_world_get_cell( ( model_ptr->position_x + x ), ( model_ptr->position_y + y ) );
 
-			// Слиянее ячейки мира и ячейки модели
+			// РЎР»РёСЏРЅРµРµ СЏС‡РµР№РєРё РјРёСЂР° Рё СЏС‡РµР№РєРё РјРѕРґРµР»Рё
 			if ( !vv_cell_merge( world_cell, model_cell, ow_flag, mode ) );
 				merge_result = false;
 
-			// Оптимизация ячейки мира, если установлен флаг
+			// РћРїС‚РёРјРёР·Р°С†РёСЏ СЏС‡РµР№РєРё РјРёСЂР°, РµСЃР»Рё СѓСЃС‚Р°РЅРѕРІР»РµРЅ С„Р»Р°Рі
 			if ( opt_flag )
 				vv_cell_optimize( world_cell );
 		}	// for
@@ -70,32 +70,32 @@ bool vv_model_merge( model_s *model_ptr, bool ow_flag, bool opt_flag, merge_mode
 }	// vv_model_merge
 
 void vv_model_create_cube( model_s *model_ptr, color_s color, uint8_t size ) {
-	// Инициализация координат модели
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РєРѕРѕСЂРґРёРЅР°С‚ РјРѕРґРµР»Рё
 	model_ptr->position_x	= 0;
 	model_ptr->position_y	= 0;
 	model_ptr->_position_h	= 0;
 
-	// Заполнение размеров модели
+	// Р—Р°РїРѕР»РЅРµРЅРёРµ СЂР°Р·РјРµСЂРѕРІ РјРѕРґРµР»Рё
 	model_ptr->size_x = size;
 	model_ptr->size_y = size;
 	model_ptr->size_z = size;
 
-	// Получение количества ячеек модели
+	// РџРѕР»СѓС‡РµРЅРёРµ РєРѕР»РёС‡РµСЃС‚РІР° СЏС‡РµРµРє РјРѕРґРµР»Рё
 	uint16_t cell_count = vv_model_get_cell_count( model_ptr );
 
-	// Выделение памяти под ячейки модели
+	// Р’С‹РґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё РїРѕРґ СЏС‡РµР№РєРё РјРѕРґРµР»Рё
 	model_ptr->cell = malloc( cell_count * sizeof( cell_s ) );
 	memset( model_ptr->cell, 0x00, cell_count * sizeof( cell_s ) );
 
-	// Цикл по ячейкам модели
+	// Р¦РёРєР» РїРѕ СЏС‡РµР№РєР°Рј РјРѕРґРµР»Рё
 	for ( uint16_t i = 0; i < cell_count; i++ ) {
-		// Инициализация сегментов модели
+		// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃРµРіРјРµРЅС‚РѕРІ РјРѕРґРµР»Рё
 		model_ptr->cell[ i ].segment[ 0 ].color.word	= transparent_color;
 		model_ptr->cell[ i ].segment[ 0 ].height		= 0;
 		model_ptr->cell[ i ].segment[ 1 ].color			= color;
 		model_ptr->cell[ i ].segment[ 1 ].height		= size;
 
-		// Инициализация параметров сегментов
+		// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїР°СЂР°РјРµС‚СЂРѕРІ СЃРµРіРјРµРЅС‚РѕРІ
 		model_ptr->cell[ i ].segment_count			= 2;
 		model_ptr->cell[ i ].segment_height_total	= size;
 	}	// for

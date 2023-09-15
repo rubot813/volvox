@@ -2,7 +2,7 @@
 #define VV_VOX_H_INCLUDED
 
 #include <string.h>		// memset
-#include "vv_model.h"
+#include "../core/vv_model.h"
 
 /*
 	vv_vox - модуль поддержки файлов .vox
