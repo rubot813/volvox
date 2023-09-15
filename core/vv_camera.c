@@ -1,9 +1,9 @@
 #include "vv_camera.h"
 
-camera_s			*_camera_ptr = NULL;		// Указатель на используемую камеру
-framebuffer_s		_framebuffer;				// Фреймбуфер
-static uint32_t		_framebuffer_pixel_count;	// Количество пикселей во фреймбуфере
-extern world_s		*_world_ptr;				// Указатель на используемый мир ( vv_world )
+camera_s			*_camera_ptr = NULL;		// РЈРєР°Р·Р°С‚РµР»СЊ РЅР° РёСЃРїРѕР»СЊР·СѓРµРјСѓСЋ РєР°РјРµСЂСѓ
+framebuffer_s		_framebuffer;				// Р¤СЂРµР№РјР±СѓС„РµСЂ
+static uint32_t		_framebuffer_pixel_count;	// РљРѕР»РёС‡РµСЃС‚РІРѕ РїРёРєСЃРµР»РµР№ РІРѕ С„СЂРµР№РјР±СѓС„РµСЂРµ
+extern world_s		*_world_ptr;				// РЈРєР°Р·Р°С‚РµР»СЊ РЅР° РёСЃРїРѕР»СЊР·СѓРµРјС‹Р№ РјРёСЂ ( vv_world )
 
 void vv_set_camera( camera_s *camera_ptr ) {
 	_camera_ptr = camera_ptr;
@@ -20,11 +20,11 @@ void vv_camera_backward( float coeff ) {
 }	// vv_camera_backward
 
 framebuffer_s* vv_create_framebuffer( uint16_t width, uint16_t height ) {
-	// Удаление старого фреймбуфера
+	// РЈРґР°Р»РµРЅРёРµ СЃС‚Р°СЂРѕРіРѕ С„СЂРµР№РјР±СѓС„РµСЂР°
 	if ( _framebuffer.width && _framebuffer.height )
 		free( _framebuffer.data );
 
-	// Сохранение новых параметров и выделение памяти под буфер
+	// РЎРѕС…СЂР°РЅРµРЅРёРµ РЅРѕРІС‹С… РїР°СЂР°РјРµС‚СЂРѕРІ Рё РІС‹РґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё РїРѕРґ Р±СѓС„РµСЂ
 	_framebuffer.width  = width;
 	_framebuffer.height = height;
 	_framebuffer_pixel_count = ( width * height );

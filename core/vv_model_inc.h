@@ -4,7 +4,7 @@
 #include "vv_vox.h"
 
 /*
-	vv_model_inc - заголовочный файл подключения моделей движка volvox
+	vv_model_inc - Р·Р°РіРѕР»РѕРІРѕС‡РЅС‹Р№ С„Р°Р№Р» РїРѕРґРєР»СЋС‡РµРЅРёСЏ РјРѕРґРµР»РµР№ РґРІРёР¶РєР° volvox
 */
 
 #endif // VV_MODEL_INC_H_INCLUDED

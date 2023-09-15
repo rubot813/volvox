@@ -1,6 +1,6 @@
 #include "vv_vox.h"
 
-// Инициализация палитры цветов файла .vox по умолчанию
+// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїР°Р»РёС‚СЂС‹ С†РІРµС‚РѕРІ С„Р°Р№Р»Р° .vox РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 const uint32_t vox_default_palette[ 256 ] = {
    0x00000000, 0xffffffff, 0xffccffff, 0xff99ffff, 0xff66ffff, 0xff33ffff, 0xff00ffff, 0xffffccff,
    0xffccccff, 0xff99ccff, 0xff66ccff, 0xff33ccff, 0xff00ccff, 0xffff99ff, 0xffcc99ff, 0xff9999ff,
@@ -36,37 +36,37 @@ const uint32_t vox_default_palette[ 256 ] = {
    0xffbbbbbb, 0xffaaaaaa, 0xff888888, 0xff777777, 0xff555555, 0xff444444, 0xff222222, 0xff111111
 };	// vox_default_palette
 
-// Размер заголовка в байтах
+// Р Р°Р·РјРµСЂ Р·Р°РіРѕР»РѕРІРєР° РІ Р±Р°Р№С‚Р°С…
 static const uint8_t vox_header_size = 4;
 
-// Заголовок VOX файла
+// Р—Р°РіРѕР»РѕРІРѕРє VOX С„Р°Р№Р»Р°
 static const char vox_header[ 4 ] = "VOX ";
 
-// Количество поддерживаемых чанков
+// РљРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРґРґРµСЂР¶РёРІР°РµРјС‹С… С‡Р°РЅРєРѕРІ
 static const uint8_t vox_chank_count = 15;
 
-// Массив названий чанков
-static const char *vox_header_chunk[ 15 ] = {	"MAIN",	// Заголовок
-												"PACK",	// Количество моделей в файле
-												"SIZE",	// Размер модели
-												"XYZI",	// Воксели модели
-												"RGBA",	// Палитра модели
-												// Неиспользуемые:
-												"rCAM",	// Информация о камере
-												"rOBJ",	// Аттрибуты рендеринга
-												"IMAP",	// Индексация палитры
-												"nTRN",	// Трансформация моделей
-												"nGRP",	// Группировка моделей
-												"nSHP",	// Описание формы модели
-												"LAYR",	// Описание слоев
-												"MATL",	// Описание материалов модели
-												"MATT",	// Старое описание материалов модели
-												"NOTE"	// Названия цветов палитры
+// РњР°СЃСЃРёРІ РЅР°Р·РІР°РЅРёР№ С‡Р°РЅРєРѕРІ
+static const char *vox_header_chunk[ 15 ] = {	"MAIN",	// Р—Р°РіРѕР»РѕРІРѕРє
+												"PACK",	// РљРѕР»РёС‡РµСЃС‚РІРѕ РјРѕРґРµР»РµР№ РІ С„Р°Р№Р»Рµ
+												"SIZE",	// Р Р°Р·РјРµСЂ РјРѕРґРµР»Рё
+												"XYZI",	// Р’РѕРєСЃРµР»Рё РјРѕРґРµР»Рё
+												"RGBA",	// РџР°Р»РёС‚СЂР° РјРѕРґРµР»Рё
+												// РќРµРёСЃРїРѕР»СЊР·СѓРµРјС‹Рµ:
+												"rCAM",	// РРЅС„РѕСЂРјР°С†РёСЏ Рѕ РєР°РјРµСЂРµ
+												"rOBJ",	// РђС‚С‚СЂРёР±СѓС‚С‹ СЂРµРЅРґРµСЂРёРЅРіР°
+												"IMAP",	// РРЅРґРµРєСЃР°С†РёСЏ РїР°Р»РёС‚СЂС‹
+												"nTRN",	// РўСЂР°РЅСЃС„РѕСЂРјР°С†РёСЏ РјРѕРґРµР»РµР№
+												"nGRP",	// Р“СЂСѓРїРїРёСЂРѕРІРєР° РјРѕРґРµР»РµР№
+												"nSHP",	// РћРїРёСЃР°РЅРёРµ С„РѕСЂРјС‹ РјРѕРґРµР»Рё
+												"LAYR",	// РћРїРёСЃР°РЅРёРµ СЃР»РѕРµРІ
+												"MATL",	// РћРїРёСЃР°РЅРёРµ РјР°С‚РµСЂРёР°Р»РѕРІ РјРѕРґРµР»Рё
+												"MATT",	// РЎС‚Р°СЂРѕРµ РѕРїРёСЃР°РЅРёРµ РјР°С‚РµСЂРёР°Р»РѕРІ РјРѕРґРµР»Рё
+												"NOTE"	// РќР°Р·РІР°РЅРёСЏ С†РІРµС‚РѕРІ РїР°Р»РёС‚СЂС‹
 											};	// vox_header_chunk
 
-// Внутренняя функция разбора чанка файла .vox
-// Принимает указатель на файловый дескриптор, указатель на результат разбора и указатель на буфер .vox для записи моделей
-// Возвращает признак ошибки или достижения конца файла: true - парсинг чанка успешен, false - достигнут конец файла или произошла ошибка.
+// Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ С„СѓРЅРєС†РёСЏ СЂР°Р·Р±РѕСЂР° С‡Р°РЅРєР° С„Р°Р№Р»Р° .vox
+// РџСЂРёРЅРёРјР°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° С„Р°Р№Р»РѕРІС‹Р№ РґРµСЃРєСЂРёРїС‚РѕСЂ, СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЂРµР·СѓР»СЊС‚Р°С‚ СЂР°Р·Р±РѕСЂР° Рё СѓРєР°Р·Р°С‚РµР»СЊ РЅР° Р±СѓС„РµСЂ .vox РґР»СЏ Р·Р°РїРёСЃРё РјРѕРґРµР»РµР№
+// Р’РѕР·РІСЂР°С‰Р°РµС‚ РїСЂРёР·РЅР°Рє РѕС€РёР±РєРё РёР»Рё РґРѕСЃС‚РёР¶РµРЅРёСЏ РєРѕРЅС†Р° С„Р°Р№Р»Р°: true - РїР°СЂСЃРёРЅРі С‡Р°РЅРєР° СѓСЃРїРµС€РµРЅ, false - РґРѕСЃС‚РёРіРЅСѓС‚ РєРѕРЅРµС† С„Р°Р№Р»Р° РёР»Рё РїСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°.
 static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buffer_s *vox_buffer_ptr ) {
 
 }	// _vox_parse_chunk
@@ -74,37 +74,37 @@ static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buff
 vox_open_res_e vv_vox_read_file( const char *file_name, vox_buffer_s *vox_buffer_ptr ) {
 	vox_open_res_e open_res = vo_ok;
 
-	// Открытие файла
+	// РћС‚РєСЂС‹С‚РёРµ С„Р°Р№Р»Р°
 	FILE *file = NULL;
 	file = fopen( file_name, "rb" );
 
-	// Проверка открытия файла
+	// РџСЂРѕРІРµСЂРєР° РѕС‚РєСЂС‹С‚РёСЏ С„Р°Р№Р»Р°
 	if ( file == NULL ) {
 		open_res = vo_open_error;
 		goto lb_read_file_end;
 	}	// if file open
 
-	// Чтение заголовка и версии файла
+	// Р§С‚РµРЅРёРµ Р·Р°РіРѕР»РѕРІРєР° Рё РІРµСЂСЃРёРё С„Р°Р№Р»Р°
 	char		header_buffer[ 4 ];
 	uint32_t	header_version;
 
 	fread( header_buffer, sizeof( char ), vox_header_size, file );
 	fread( &header_version, sizeof( uint32_t ), 1, file );
 
-	// Проверка заголовка файла
+	// РџСЂРѕРІРµСЂРєР° Р·Р°РіРѕР»РѕРІРєР° С„Р°Р№Р»Р°
 	if ( memcmp( header_buffer, vox_header, vox_header_size ) ) {
 		open_res = vo_wrong_format;
 		goto lb_read_file_end;
 	}	// if header
 
-	// Проверка версии файла
+	// РџСЂРѕРІРµСЂРєР° РІРµСЂСЃРёРё С„Р°Р№Р»Р°
 	if ( header_version != VOX_VERSION ) {
 		open_res = vo_wrong_version;
 		goto lb_read_file_end;
 	}	// if header version
 
 lb_read_file_end:
-	// Закрытие файла
+	// Р—Р°РєСЂС‹С‚РёРµ С„Р°Р№Р»Р°
 	if ( file != NULL )
 		fclose( file );
 	return open_res;
@@ -116,7 +116,7 @@ bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
 
 /*
 bool vv_vox_file_read( const char *file_name, model_vox_s *model_vox_ptr, uint8_t index ) {
-	// Результат чтения файла
+	// Р РµР·СѓР»СЊС‚Р°С‚ С‡С‚РµРЅРёСЏ С„Р°Р№Р»Р°
 	bool read_result = true;
 
 	FILE *file = NULL;
