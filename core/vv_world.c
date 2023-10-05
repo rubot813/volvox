@@ -1,7 +1,7 @@
 #include "vv_world.h"
 
-world_s *_world_ptr = NULL;						// Указатель на используемый мир
-const uint32_t transparent_color = 0x00000000;	// Инициализация прозрачного цвета
+world_s *_world_ptr = NULL;							// Указатель на используемый мир
+const uint32_t vv_transparent_color = 0x00000000;	// Инициализация прозрачного цвета
 
 world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_s back_color ) {
 	// Выделение памяти под структуру
@@ -48,10 +48,26 @@ bool vv_cell_optimize( cell_s *cell_ptr ) {
 	// Флаг оптимизации
 	bool opt_flag = false;
 
+	// Признак получения непустого сегмента
+	bool color_seg_flag = false;
+
 	// Проход по сегментам в обратном направлении
 	for ( int8_t seg_id = ( cell_ptr->segment_count - 1 ); seg_id >= 0; seg_id-- ) {
-		// Сравнение цвета толькое если высота больше 0
-		if ( seg_id > 0 ) {
+		// Если сегмент с цветом не получен
+		if ( !color_seg_flag ) {
+			// Если сегмент прозрачный
+			if ( cell_ptr->segment[ seg_id ].color.word == vv_transparent_color ) {
+				// Обновление общей высоты ячейки
+				cell_ptr->segment_height_total -= cell_ptr->segment[ seg_id ].height;
+
+				// Обнуление высоты текущего сегмента
+				cell_ptr->segment[ seg_id ].height = 0;
+			} else
+				// Установка флага получения непустого сегмента
+				color_seg_flag = true;
+
+			// Сегмент с цветом получен. Сравнение цвета только если высота больше 0
+		} else if ( seg_id > 0 ) {
 			// Если цвета двух соседних сегментов совпадают
 			if ( cell_ptr->segment[ seg_id ].color.word == cell_ptr->segment[ seg_id - 1 ].color.word ) {
 				// Перенос высоты на следующий сегмент
@@ -79,7 +95,7 @@ bool vv_cell_push_back( cell_s *cell_ptr, uint8_t height ) {
 	if ( cell_ptr->segment_count < CELL_SEGMENT_COUNT ) {
 		// Получение указателя на сегмент и установка параметров
 		segment_s *seg_ptr = &( cell_ptr->segment[ cell_ptr->segment_count++ ] );
-		seg_ptr->color.word = transparent_color;
+		seg_ptr->color.word = vv_transparent_color;
 		seg_ptr->height		= height;
 
 		// Обновление общей высоты и количества сегментов
@@ -101,7 +117,7 @@ bool vv_cell_push_front( cell_s *cell_ptr, uint8_t height ) {
 			cell_ptr->segment[ seg_id + 1 ] = cell_ptr->segment[ seg_id ];
 
 		// Инициализация нулевого сегмента
-		cell_ptr->segment[ 0 ].color.word	= transparent_color;
+		cell_ptr->segment[ 0 ].color.word	= vv_transparent_color;
 		cell_ptr->segment[ 0 ].height		= height;
 
 		// Обновление общей высоты и количества сегментов
@@ -178,7 +194,7 @@ lb_end:
 // Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
 // Используется в vv_cell_merge
 void _color_merge_add( color_s *dst_color, color_s *src_color, bool ow_flag ) {
-	if ( ( ow_flag && ( src_color->word != transparent_color ) ) || ( dst_color->word == transparent_color ) )
+	if ( ( ow_flag && ( src_color->word != vv_transparent_color ) ) || ( dst_color->word == vv_transparent_color ) )
 		*dst_color = *src_color;
 }	// _color_merge_add
 
@@ -188,7 +204,7 @@ void _color_merge_add( color_s *dst_color, color_s *src_color, bool ow_flag ) {
 void _color_merge_sub( color_s *dst_color, color_s *src_color, bool ow_flag ) {
 	// if ( ( ow_flag && ( src_color->word != transparent_color ) ) || ( dst_color->word == transparent_color ) )
 	if ( dst_color->word == src_color->word )
-		dst_color->word = transparent_color;
+		dst_color->word = vv_transparent_color;
 }	// _color_merge_sub
 
 // Внутренняя встроенная функция перехода к следующему сегменту. Пропускает сегменты с высотой 0.
@@ -364,7 +380,7 @@ bool vv_cell_remove_segment( cell_s *cell_ptr, uint8_t id ) {
 color_s vv_cell_read_voxel( cell_s *cell_ptr, uint8_t height ) {
 	// Результирующий цвет вокселя
 	color_s color;
-	color.word = transparent_color;
+	color.word = vv_transparent_color;
 
 	// Получение id сегмента
 	int8_t segment_id = vv_cell_read_segment( cell_ptr, height );

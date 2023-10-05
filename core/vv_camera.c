@@ -9,12 +9,12 @@ void vv_set_camera( camera_s *camera_ptr ) {
 	_camera_ptr = camera_ptr;
 }   // vv_set_camera
 
-void vv_camera_forward( float coeff ) {
+void vv_camera_forward( vv_fp_math_type coeff ) {
 	_camera_ptr->x += cos( _camera_ptr->angle ) * coeff;
 	_camera_ptr->y += sin( _camera_ptr->angle ) * coeff;
 }	// vv_camera_forward
 
-void vv_camera_backward( float coeff ) {
+void vv_camera_backward( vv_fp_math_type coeff ) {
 	_camera_ptr->x -= cos( _camera_ptr->angle ) * coeff;
 	_camera_ptr->y -= sin( _camera_ptr->angle ) * coeff;
 }	// vv_camera_backward

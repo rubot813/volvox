@@ -26,13 +26,13 @@ typedef struct {
 
 // Структура камеры
 typedef struct {
-	float x;				// Координата X
-	float y;				// Координата Y
-	float height;			// Высота
-	float angle;			// Угол поворота
-	int16_t horizon;		// Линия горизонта
-	uint16_t distance;		// Дальность отрисовки
-	float v_scale;			// Вертикальное растяжение изображения
+	vv_fp_math_type x;			// Координата X
+	vv_fp_math_type y;			// Координата Y
+	vv_fp_math_type height;		// Высота
+	vv_fp_math_type angle;		// Угол поворота
+	int16_t horizon;			// Линия горизонта
+	uint16_t distance;			// Дальность отрисовки
+	vv_fp_math_type v_scale;	// Вертикальное растяжение изображения
 } camera_s;
 
 // = = = = Функции = = = =
@@ -47,11 +47,11 @@ void vv_set_camera( camera_s * );
 
 // Функция движения камеры вперед.
 // Принимает расстрояние для перемещения ( >0.0f )
-void vv_camera_forward( float );
+void vv_camera_forward( vv_fp_math_type );
 
 // Функция движения камеры назад.
 // Принимает расстояние для перемещения ( >0.0f )
-void vv_camera_backward( float );
+void vv_camera_backward( vv_fp_math_type );
 
 // Функция создания фреймбуфера.
 // Принимает размеры буфера ( x/w/ширина - y/h/высота)

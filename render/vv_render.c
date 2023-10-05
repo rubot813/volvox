@@ -17,26 +17,26 @@ void vv_set_render_param( render_param_s *render_param ) {
 
 void vv_render_base( void ) {
 	// Расчет синуса и косинуса угла поворота камеры
-	float cam_angle_sin = sin( _camera_ptr->angle );
-	float cam_angle_cos = cos( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_sin = sin( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_cos = cos( _camera_ptr->angle );
 
 	// Получение левой дальней точки FOV
-	float plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
-	float ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
 
 	// Получение правой дальней точки FOV
-	float prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
-	float pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
 
 	// Цикл по лучам слева направо
 	for ( uint16_t ray = 0; ray < _framebuffer.width; ray++ ) {
 		// Расчет смещения x/y для бросания луча
-		float ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
-		float ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
 
 		// Установка начальной позиции луча
-		float ray_x = _camera_ptr->x;
-		float ray_y = _camera_ptr->y;
+		vv_fp_math_type ray_x = _camera_ptr->x;
+		vv_fp_math_type ray_y = _camera_ptr->y;
 
 		// Бросание луча в направлении от камеры
 		for ( uint16_t z = 1; z < _camera_ptr->distance; z++ ) {
@@ -58,10 +58,10 @@ void vv_render_base( void ) {
 			cell_s *cell_ptr = vv_world_get_cell( rx, ry );
 
 			// Получение высоты верхней точки линии
-			int16_t h_up = ( ( float )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_up = ( ( vv_fp_math_type )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Получение высоты нижней точки линии
-			int16_t h_down = ( ( float )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_down = ( ( vv_fp_math_type )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Проверка на попадание линии в экран
 			if ( ( h_up > _framebuffer.height ) || ( h_down < 0 ) )
@@ -71,11 +71,11 @@ void vv_render_base( void ) {
             vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
 
             // Получение соотношения пикселя экрана к вокселю в мире
-            float pix_coeff = ( ( float )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
+			vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
 
             // Расчет начального цвета вокселя в линии
-            float vbuf_pos = .0f;
-            if ( h_down > _framebuffer.height )
+			vv_fp_math_type vbuf_pos = .0f;
+			if ( h_down > _framebuffer.height )
 				vbuf_pos = ( h_down - _framebuffer.height ) * pix_coeff;
 
 			// Конечная y координата отрисовки линии
@@ -94,7 +94,7 @@ void vv_render_base( void ) {
 				uint32_t color = _voxel_buffer.color[ ( uint8_t )( vbuf_pos ) ].word;
 
 				// Отрисовка, если цвет вокселя не прозрачный и цвет во фреймбуфере фоновый
-				if ( ( color ^ transparent_color ) && ( _framebuffer.data[ id ] == _world_ptr->background_color.word ) )
+				if ( ( color ^ vv_transparent_color ) && ( _framebuffer.data[ id ] == _world_ptr->background_color.word ) )
 					_framebuffer.data[ id ] = color;
 
 				// Смещение цвета вокселя
@@ -106,26 +106,26 @@ void vv_render_base( void ) {
 
 void vv_render_opti( void ) {
 	// Расчет синуса и косинуса угла поворота камеры
-	float cam_angle_sin = sin( _camera_ptr->angle );
-	float cam_angle_cos = cos( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_sin = sin( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_cos = cos( _camera_ptr->angle );
 
 	// Получение левой дальней точки FOV
-	float plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
-	float ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
 
 	// Получение правой дальней точки FOV
-	float prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
-	float pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
 
 	// Цикл по лучам слева направо
 	for ( uint16_t ray = 0; ray < _framebuffer.width; ray++ ) {
 		// Расчет смещения x/y для бросания луча
-		float ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
-		float ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
 
 		// Установка начальной позиции луча
-		float ray_x = _camera_ptr->x;
-		float ray_y = _camera_ptr->y;
+		vv_fp_math_type ray_x = _camera_ptr->x;
+		vv_fp_math_type ray_y = _camera_ptr->y;
 
 		// Параметры Z - буфера
 		int16_t h_up_zbuf	= INT16_MAX;
@@ -160,10 +160,10 @@ void vv_render_opti( void ) {
 			cell_s *cell_ptr = vv_world_get_cell( rx, ry );
 
 			// Получение высоты верхней точки линии
-			int16_t h_up = ( ( float )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_up = ( ( vv_fp_math_type )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Получение высоты нижней точки линии
-			int16_t h_down = ( ( float )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_down = ( ( vv_fp_math_type )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Проверка на попадание линии в экран
 			if ( ( h_up > _framebuffer.height ) || ( h_down < 0 ) )
@@ -177,22 +177,22 @@ void vv_render_opti( void ) {
 			h_up_zbuf	= h_up;
 			h_down_zbuf	= h_down;
 
-            // Запись буфера вокселей
-            vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
+			// Запись буфера вокселей
+			vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
 
-            // Получение соотношения пикселя экрана к вокселю в мире
-            float pix_coeff = ( ( float )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
+			// Получение соотношения пикселя экрана к вокселю в мире
+			vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
 
-            // Расчет начального цвета вокселя в линии
-            float vbuf_pos = .0f;
-            if ( h_down > _framebuffer.height )
+			// Расчет начальной позиции вокселя в линии
+			vv_fp_math_type vbuf_pos = .0;
+			if ( h_down > _framebuffer.height )
 				vbuf_pos = ( h_down - _framebuffer.height ) * pix_coeff;
 
 			// Конечная y координата отрисовки линии
 			int16_t end_y = ( h_up >= 0 ) ? h_up : -1;
 
 			// Начальная координата отрисовки и счетчик
-			uint16_t fb_pix = (_framebuffer.height - 1 );
+			uint16_t fb_pix = ( _framebuffer.height - 1 );
 			int16_t pos_y = ( h_down < fb_pix ) ? h_down : fb_pix;
 
 			// Отрисовка линии
@@ -206,7 +206,7 @@ void vv_render_opti( void ) {
 				// Если цвет во фреймбуфере фоновый
 				if ( _framebuffer.data[ id ] == _world_ptr->background_color.word ) {
 					// Если цвет вокселя не фоновый, то отрисовка, иначе сброс Z-буфера
-					if ( color ^ transparent_color )
+					if ( color ^ vv_transparent_color )
 						_framebuffer.data[ id ] = color;
 					else {
 						// Сброс параметров Z - буфера
@@ -229,26 +229,26 @@ lb_ray_end:
 /*
 void vv_render_lod( void ) {
 	// Расчет синуса и косинуса угла поворота камеры
-	float cam_angle_sin = sin( _camera_ptr->angle );
-	float cam_angle_cos = cos( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_sin = sin( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_cos = cos( _camera_ptr->angle );
 
 	// Получение левой дальней точки FOV
-	float plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
-	float ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
 
 	// Получение правой дальней точки FOV
-	float prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
-	float pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
 
 	// Цикл по лучам слева направо
 	for ( uint16_t ray = 0; ray < _framebuffer.width; ray++ ) {
 		// Расчет смещения x/y для бросания луча
-		float ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
-		float ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
 
 		// Установка начальной позиции луча
-		float ray_x = _camera_ptr->x;
-		float ray_y = _camera_ptr->y;
+		vv_fp_math_type ray_x = _camera_ptr->x;
+		vv_fp_math_type ray_y = _camera_ptr->y;
 
 		// Бросание луча в направлении от камеры
 		uint32_t z = 1;	// u32 из за bsr
@@ -276,10 +276,10 @@ void vv_render_lod( void ) {
 			cell_s *cell_ptr = vv_world_get_cell( rx, ry );
 
 			// Получение высоты верхней точки линии
-			int16_t h_up = ( ( float )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_up = ( ( vv_fp_math_type )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Получение высоты нижней точки линии
-			int16_t h_down = ( ( float )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_down = ( ( vv_fp_math_type )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Проверка на попадание линии в экран
 			if ( ( h_up > _framebuffer.height ) || ( h_down < 0 ) )
@@ -289,10 +289,10 @@ void vv_render_lod( void ) {
             vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
 
             // Получение соотношения пикселя экрана к вокселю в мире
-            float pix_coeff = ( ( float )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
+            vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
 
             // Расчет начального цвета вокселя в линии
-            float vbuf_pos = .0f;
+            vv_fp_math_type vbuf_pos = .0f;
             if ( h_down > _framebuffer.height )
 				vbuf_pos = ( h_down - _framebuffer.height ) * pix_coeff;
 
@@ -328,26 +328,26 @@ lb_lod_ray_end:
 
 void vv_render_zbuf( void ) {
 	// Расчет синуса и косинуса угла поворота камеры
-	float cam_angle_sin = sin( _camera_ptr->angle );
-	float cam_angle_cos = cos( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_sin = sin( _camera_ptr->angle );
+	vv_fp_math_type cam_angle_cos = cos( _camera_ptr->angle );
 
 	// Получение левой дальней точки FOV
-	float plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
-	float ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
 
 	// Получение правой дальней точки FOV
-	float prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
-	float pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
+	vv_fp_math_type prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
+	vv_fp_math_type pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
 
 	// Цикл по лучам слева направо
 	for ( uint16_t ray = 0; ray < _framebuffer.width; ray++ ) {
 		// Расчет смещения x/y для бросания луча
-		float ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
-		float ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		vv_fp_math_type ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
 
 		// Установка начальной позиции луча
-		float ray_x = _camera_ptr->x;
-		float ray_y = _camera_ptr->y;
+		vv_fp_math_type ray_x = _camera_ptr->x;
+		vv_fp_math_type ray_y = _camera_ptr->y;
 
 		// Параметры Z - буфера
 		int16_t h_up_zbuf	= INT16_MAX;
@@ -373,10 +373,10 @@ void vv_render_zbuf( void ) {
 			cell_s *cell_ptr = vv_world_get_cell( rx, ry );
 
 			// Получение высоты верхней точки линии
-			int16_t h_up = ( ( float )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_up = ( ( vv_fp_math_type )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Получение высоты нижней точки линии
-			int16_t h_down = ( ( float )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
+			int16_t h_down = ( ( vv_fp_math_type )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
 
 			// Проверка на попадание линии в экран
 			if ( ( h_up > _framebuffer.height ) || ( h_down < 0 ) )
@@ -394,10 +394,10 @@ void vv_render_zbuf( void ) {
 			vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
 
 			// Получение соотношения пикселя экрана к вокселю в мире
-			float pix_coeff = ( ( float )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
+			vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
 
 			// Расчет начального цвета вокселя в линии
-            float vbuf_pos = .0f;
+            vv_fp_math_type vbuf_pos = .0f;
             if ( h_down > _framebuffer.height )
 				vbuf_pos = ( h_down - _framebuffer.height ) * pix_coeff;
 
@@ -419,7 +419,7 @@ void vv_render_zbuf( void ) {
 				// Если цвет во фреймбуфере фоновый
 				if ( _framebuffer.data[ id ] == _world_ptr->background_color.word ) {
 					// Если цвет вокселя не фоновый, то отрисовка, иначе установка признака прозраности для Z-буфера
-					if ( color != transparent_color )
+					if ( color != vv_transparent_color )
 						_framebuffer.data[ id ] = color;
 					else {
 						// Сброс параметров Z - буфера

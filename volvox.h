@@ -2,10 +2,10 @@
 #define VOLVOX_H_INCLUDED
 
 // Версия движка
-#define VOLVOX_VER 7
+#define VOLVOX_VER 8
 
-#include "vv_render.h"		// Подключает camera и world
-#include "vv_model_inc.h"	// Подключает vv_vox, vv_model
+#include "render/vv_render.h"	// Подключает camera и world
+#include "core/vv_model_inc.h"	// Подключает vv_model, vv_vox
 
 /*
 	Заголовочный файл для подключения библиотеки volvox.

@@ -90,7 +90,7 @@ void vv_model_create_cube( model_s *model_ptr, color_s color, uint8_t size ) {
 	// Цикл по ячейкам модели
 	for ( uint16_t i = 0; i < cell_count; i++ ) {
 		// Инициализация сегментов модели
-		model_ptr->cell[ i ].segment[ 0 ].color.word	= transparent_color;
+		model_ptr->cell[ i ].segment[ 0 ].color.word	= vv_transparent_color;
 		model_ptr->cell[ i ].segment[ 0 ].height		= 0;
 		model_ptr->cell[ i ].segment[ 1 ].color			= color;
 		model_ptr->cell[ i ].segment[ 1 ].height		= size;

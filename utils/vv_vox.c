@@ -68,7 +68,7 @@ static const char *vox_header_chunk[ 15 ] = {	"MAIN",	// Заголовок
 // Принимает указатель на файловый дескриптор, указатель на результат разбора и указатель на буфер .vox для записи моделей
 // Возвращает признак ошибки или достижения конца файла: true - парсинг чанка успешен, false - достигнут конец файла или произошла ошибка.
 static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buffer_s *vox_buffer_ptr ) {
-
+	return true;
 }	// _vox_parse_chunk
 
 vox_open_res_e vv_vox_read_file( const char *file_name, vox_buffer_s *vox_buffer_ptr ) {
@@ -111,7 +111,7 @@ lb_read_file_end:
 }	// vv_vox_read_file
 
 bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
-
+	return true;
 }	// vv_vox_create_model
 
 /*
