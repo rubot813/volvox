@@ -4,16 +4,26 @@ world_s *_world_ptr = NULL;							// Указатель на используе�
 const uint32_t vv_transparent_color = 0x00000000;	// Инициализация прозрачного цвета
 
 world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_s back_color ) {
-	// Выделение памяти под структуру
-	world_s *world_ptr = malloc( sizeof( world_s ) );
+	// Указатель на структуру мира
+	world_s *world_ptr = NULL;
 
-	// Выделение памяти под ячейки мира
-	world_ptr->cell = malloc( size_x * size_y * sizeof( cell_s ) );
+	// Получение количества выставленных бит в size_x
+	uint16_t bit_count;
+	__asm__ volatile( "popcnt %1, %0" : "=r"( bit_count ) : "b" ( size_x ) );
 
-	// Установка параметров мира
-	world_ptr->size_x = size_x;
-	world_ptr->size_y = size_y;
-	world_ptr->background_color = back_color;
+	// Если размеры мира кратны степени двойки и фоновый цвет отличается от прозрачного
+	if ( ( bit_count == 1 ) && ( size_x == size_y ) && ( back_color.word != vv_transparent_color ) ) {
+		// Выделение памяти под структуру
+		world_ptr = malloc( sizeof( world_s ) );
+
+		// Выделение памяти под ячейки мира
+		world_ptr->cell = malloc( size_x * size_y * sizeof( cell_s ) );
+
+		// Установка параметров мира
+		world_ptr->size_x = size_x;
+		world_ptr->size_y = size_y;
+		world_ptr->background_color = back_color;
+	}	// if
 
 	return world_ptr;
 }	// vv_create_world
@@ -36,8 +46,13 @@ cell_s* vv_world_get_cell( uint16_t x, uint16_t y ) {
 }	// vv_world_get_cell
 
 void vv_cell_calc_height( cell_s *cell_ptr ) {
+	// Обнуление общей высоты ячейки
 	cell_ptr->segment_height_total = 0;
+
+	// Указатель на сегменты ячейки
 	segment_s *seg_ptr = cell_ptr->segment;
+
+	// Проход по всем сегментам и инкремент общей высоты
 	while ( seg_ptr < ( cell_ptr->segment + cell_ptr->segment_count ) ) {
 		cell_ptr->segment_height_total += seg_ptr->height;
 		seg_ptr++;
