@@ -1,4 +1,6 @@
 #include "vv_vox.h"
+#define VOX_CHUNK_COUNT 15		// Общее количество чанков
+#define VOX_ALLOW_CHUNK_COUNT 5	// Количество поддерживаемых чанков
 
 // Инициализация палитры цветов файла .vox по умолчанию
 const uint32_t vox_default_palette[ 256 ] = {
@@ -36,42 +38,233 @@ const uint32_t vox_default_palette[ 256 ] = {
    0xffbbbbbb, 0xffaaaaaa, 0xff888888, 0xff777777, 0xff555555, 0xff444444, 0xff222222, 0xff111111
 };	// vox_default_palette
 
+// Перечисление результатов разбора чанка (менять одновременно с vox_open_res_e)
+typedef enum {
+	vp_ok = 0,			// Успешно
+	vp_wrong_format,	// Некорректный формат чанка
+	vp_memory_error,	// Ошибка памяти
+	vp_read_error		// Ошибка чтения файла
+} vox_parse_res_e;
+
 // Размер заголовка в байтах
 static const uint8_t vox_header_size = 4;
 
 // Заголовок VOX файла
-static const char vox_header[ 4 ] = "VOX ";
-
-// Количество поддерживаемых чанков
-static const uint8_t vox_chank_count = 15;
+static const unsigned char vox_header[ 4 ] = "VOX ";
 
 // Массив названий чанков
-static const char *vox_header_chunk[ 15 ] = {	"MAIN",	// Заголовок
-												"PACK",	// Количество моделей в файле
-												"SIZE",	// Размер модели
-												"XYZI",	// Воксели модели
-												"RGBA",	// Палитра модели
-												// Неиспользуемые:
-												"rCAM",	// Информация о камере
-												"rOBJ",	// Аттрибуты рендеринга
-												"IMAP",	// Индексация палитры
-												"nTRN",	// Трансформация моделей
-												"nGRP",	// Группировка моделей
-												"nSHP",	// Описание формы модели
-												"LAYR",	// Описание слоев
-												"MATL",	// Описание материалов модели
-												"MATT",	// Старое описание материалов модели
-												"NOTE"	// Названия цветов палитры
-											};	// vox_header_chunk
+static const char *vox_header_chunk[ VOX_CHUNK_COUNT ] = {	"MAIN",	// Заголовок
+															"PACK",	// Количество моделей в файле
+															"SIZE",	// Размер модели
+															"XYZI",	// Воксели модели
+															"RGBA",	// Палитра модели
+															// Неиспользуемые:
+															"rCAM",	// Информация о камере
+															"rOBJ",	// Аттрибуты рендеринга
+															"IMAP",	// Индексация палитры
+															"nTRN",	// Трансформация моделей
+															"nGRP",	// Группировка моделей
+															"nSHP",	// Описание формы модели
+															"LAYR",	// Описание слоев
+															"MATL",	// Описание материалов модели
+															"MATT",	// Старое описание материалов модели
+															"NOTE"	// Названия цветов палитры
+														};	// vox_header_chunk
+
+// Идентификатор читаемой модели
+static uint8_t model_read_id = 0;
+
+// Признаки чтения вокселей и цветов модели
+static bool model_voxel_flag, model_color_flag;
+
+static vox_parse_res_e _vox_parse_chunk_main( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
+	// Сохранение размера файла (байт)
+	buffer_ptr->file_size = chunk_header->children_size;
+#ifdef VOX_PRINT_DEBUG
+	printf( "vox parse chunk main: success! file size: %u\n", buffer_ptr->file_size );
+#endif // VOX_PRINT_DEBUG
+	return vp_ok;
+}	// _vox_parse_chunk_main
+
+static vox_parse_res_e _vox_parse_chunk_pack( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
+	// Результат разбора чанка
+	vox_parse_res_e parse_res = vp_ok;
+
+	// Чтение количества моделей в файле (u32)
+	uint32_t model_count = 0;
+	if ( fread( &model_count, sizeof( uint32_t ), 1, file ) != 1 ) {
+		// Чтение не удалось, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk pack: read error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_read_error;
+		goto lb_parse_chunk_pack_end;
+	}	// if fread
+
+	// Проверка количества моделей в файле ( 1 .. 15 )
+	if ( model_count && ( model_count < 16 ) ) {
+		// Неверное количество моделей в файле, некорректный формат файла
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk pack: wrong model count[%u]\n", model_count );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_wrong_format;
+		goto lb_parse_chunk_pack_end;
+	}	// if model_count
+
+	// Установка количества моделей в буфере модели
+	buffer_ptr->model_count = model_count;
+
+	// Выделение памяти под модели
+	buffer_ptr->model_ptr = calloc( buffer_ptr->model_count, sizeof( sizeof( vox_model_s ) ) );
+
+	// Если память не выделена
+	if ( !buffer_ptr->model_ptr ) {
+		// Память не выделена, ошибка памяти
+#ifdef VOX_PRINT_DEBUG
+			printf( "vox parse chunk pack: memory allocation error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_memory_error;
+		goto lb_parse_chunk_pack_end;
+	}	// if model_ptr
+
+#ifdef VOX_PRINT_DEBUG
+	printf( "vox parse chunk pack: success! model count: %u\n", buffer_ptr->model_count );
+#endif // VOX_PRINT_DEBUG
+
+lb_parse_chunk_pack_end:
+	return parse_res;
+}	// _vox_parse_chunk_pack
+
+static vox_parse_res_e _vox_parse_chunk_size( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
+	printf( "OK! size\n" );
+	// Переход к концу чанка
+	fseek( file, chunk_header->chunk_size, SEEK_CUR );
+	return vp_ok;
+}	// _vox_parse_chunk_size
+
+static vox_parse_res_e _vox_parse_chunk_xyzi( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
+	printf( "OK! xyzi\n" );
+	// Переход к концу чанка
+	fseek( file, chunk_header->chunk_size, SEEK_CUR );
+	return vp_ok;
+}	// _vox_parse_chunk_xyzi
+
+static vox_parse_res_e _vox_parse_chunk_rgba( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
+	printf( "OK! rgba. size = %u\n", chunk_header->chunk_size );
+	// Переход к концу чанка
+	fseek( file, chunk_header->chunk_size, SEEK_CUR );
+	return vp_ok;
+}	// _vox_parse_chunk_rgba
 
 // Внутренняя функция разбора чанка файла .vox
 // Принимает указатель на файловый дескриптор, указатель на результат разбора и указатель на буфер .vox для записи моделей
 // Возвращает признак ошибки или достижения конца файла: true - парсинг чанка успешен, false - достигнут конец файла или произошла ошибка.
-static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buffer_s *vox_buffer_ptr ) {
-	return true;
+static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buffer_s *buffer_ptr ) {
+	// Результат разбора чанка
+	bool parse_result = true;
+
+	// Сброс id читаемой модели
+	model_read_id = 0;
+
+	// Ленивая инициализация массива функций разбора чанков
+	static vox_parse_res_e ( *parse_func_array[ VOX_ALLOW_CHUNK_COUNT ] )( FILE *, vox_chunk_header_u *, vox_buffer_s * ) = {
+		_vox_parse_chunk_main,	// id 0, MAIN
+		_vox_parse_chunk_pack,	// id 1, PACK
+		_vox_parse_chunk_size,	// id 2, SIZE
+		_vox_parse_chunk_xyzi,	// id 3, XYZI
+		_vox_parse_chunk_rgba	// id 4, GRBA
+	};	// parse_func_array
+
+	// Буфер заголовка чанка
+	vox_chunk_header_u chunk_header;
+
+	// Чтение заголовка чанка
+	if ( fread( &chunk_header, sizeof( vox_chunk_header_u ), 1, file ) != 1 ) {
+		// Заголовок не прочитан. Если достигнут конец файла
+		if ( feof( file ) )
+			parse_result = false;
+		else {
+			// Конец файла не достигнут, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+			printf( "vox parse chunk: header read error\n" );
+#endif // VOX_PRINT_DEBUG
+			parse_result = false;
+			*open_res_ptr = vp_read_error;
+		}	// if feof
+		goto lb_parse_chunk_end;
+	}	// if fread
+
+	// Флаг определения типа чанка
+	bool chunk_search_flag = false;
+
+	// Проход по всем типам чанков
+	for ( uint8_t chunk_id = 0; chunk_id < VOX_CHUNK_COUNT; chunk_id++ ) {
+		// Сравнение заголовка чанка
+		if ( !memcmp( chunk_header.header, vox_header_chunk[ chunk_id ], vox_header_size ) ) {
+			// Установка признака успешного чтения чанка
+			chunk_search_flag = true;
+			// Если чанк поддерживается
+			if ( chunk_id < VOX_ALLOW_CHUNK_COUNT ) {
+				// Разбор чанка
+				vox_parse_res_e parse_res = parse_func_array[ chunk_id ]( file, &chunk_header, buffer_ptr );
+
+				// Сохранение результата разбора чанка.
+				// Каст vox_open_res_e к vox_parse_res_e !
+				*open_res_ptr = ( vox_open_res_e )( parse_res );
+			}	// if chunk_id
+#ifdef VOX_PRINT_DEBUG
+			else
+				printf( "vox parse chunk: (warning) unsupported chunk [id %u]\n", chunk_id );
+#endif // VOX_PRINT_DEBUG
+			break;
+		}	// if !memcmp
+	}	// for chunk_id
+
+	// Если чанк не определен, ошибка формата файла
+	if ( !chunk_search_flag ) {
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk: unknown chunk\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_result = false;
+		*open_res_ptr = vo_wrong_format;
+	}	// if !chunk_search_flag
+
+lb_parse_chunk_end:
+	return parse_result;
 }	// _vox_parse_chunk
 
+vox_buffer_s* vv_vox_create_buffer( void ) {
+	// Выделение памяти под буфер
+	vox_buffer_s *buffer_ptr = NULL;
+	buffer_ptr = malloc( sizeof( vox_buffer_s ) );
+
+	// Если память успешно выделена
+	if ( buffer_ptr ) {
+		// Обнуление полей структуры
+		buffer_ptr->file_size	= 0;
+		buffer_ptr->model_count	= 0;
+		buffer_ptr->model_ptr	= NULL;
+	}	// if buffer_ptr
+#ifdef VOX_PRINT_DEBUG
+	else
+		printf( "vox create buffer: memory allocation error\n" );
+#endif // VOX_PRINT_DEBUG
+	return buffer_ptr;
+}	// vv_vox_create_buffer
+
+void vv_vox_free_buffer( vox_buffer_s *buffer_ptr ) {
+	// Если указатель на буфер валиден
+	if ( buffer_ptr ) {
+		// Если в буфере есть модели, очистка
+		if ( buffer_ptr->model_count )
+			free( buffer_ptr->model_ptr );
+		// Удаление буфера
+		free( buffer_ptr );
+	}	// if buffer_ptr
+}	// vv_vox_free_buffer
+
 vox_open_res_e vv_vox_read_file( const char *file_name, vox_buffer_s *vox_buffer_ptr ) {
+	// Результат чтения файла
 	vox_open_res_e open_res = vo_ok;
 
 	// Открытие файла
@@ -80,28 +273,49 @@ vox_open_res_e vv_vox_read_file( const char *file_name, vox_buffer_s *vox_buffer
 
 	// Проверка открытия файла
 	if ( file == NULL ) {
+		// Файл не открыт, ошибка открытия
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox read file: open error\n" );
+#endif // VOX_PRINT_DEBUG
 		open_res = vo_open_error;
 		goto lb_read_file_end;
 	}	// if file open
 
 	// Чтение заголовка и версии файла
-	char		header_buffer[ 4 ];
-	uint32_t	header_version;
-
-	fread( header_buffer, sizeof( char ), vox_header_size, file );
-	fread( &header_version, sizeof( uint32_t ), 1, file );
+	vox_header_s header;
+	if ( fread( &header, sizeof( vox_header_s ), 1, file ) != 1 ) {
+		// Заголовок не прочитан, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox read file: read header error\n" );
+#endif // VOX_PRINT_DEBUG
+		open_res = vo_read_error;
+		goto lb_read_file_end;
+	}	// if fread
 
 	// Проверка заголовка файла
-	if ( memcmp( header_buffer, vox_header, vox_header_size ) ) {
+	if ( memcmp( header.header, vox_header, vox_header_size ) ) {
+		// Заголовок файла не совпадает, некорректный формат файла
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox read file: file header error\n" );
+#endif // VOX_PRINT_DEBUG
 		open_res = vo_wrong_format;
 		goto lb_read_file_end;
 	}	// if header
 
 	// Проверка версии файла
-	if ( header_version != VOX_VERSION ) {
+	if ( header.version != VOX_VERSION ) {
+		// Версия файла некорректна, ошибка версии
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox read file: file version error\n" );
+#endif // VOX_PRINT_DEBUG
 		open_res = vo_wrong_version;
 		goto lb_read_file_end;
 	}	// if header version
+
+	// Разбор чанков файла
+	while ( _vox_parse_chunk( file, &open_res, vox_buffer_ptr ) ) {
+		;
+	}	// _while vox_parse_chunk
 
 lb_read_file_end:
 	// Закрытие файла
@@ -193,8 +407,8 @@ bool vv_vox_file_read( const char *file_name, model_vox_s *model_vox_ptr, uint8_
 		if ( header[ 0 ] == 'R' && header[ 1 ] == 'G' ) {
 			//printf( "here yay!" );
 
-			model_vox_ptr->color_palette = malloc( sizeof( color_s ) * 256 );
-			fread( model_vox_ptr->color_palette, sizeof( color_s ), 256, file );
+			model_vox_ptr->color_palette = malloc( sizeof( color_u ) * 256 );
+			fread( model_vox_ptr->color_palette, sizeof( color_u ), 256, file );
 			rgba_read = true;
 		} else {
 			//printf( "skip chunk\n" );

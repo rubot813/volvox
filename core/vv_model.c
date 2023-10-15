@@ -69,7 +69,7 @@ bool vv_model_merge( model_s *model_ptr, bool ow_flag, bool opt_flag, merge_mode
 	return merge_result;
 }	// vv_model_merge
 
-void vv_model_create_cube( model_s *model_ptr, color_s color, uint8_t size ) {
+void vv_model_create_cube( model_s *model_ptr, color_u color, uint8_t size ) {
 	// Инициализация координат модели
 	model_ptr->position_x	= 0;
 	model_ptr->position_y	= 0;

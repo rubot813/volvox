@@ -183,8 +183,11 @@ void vv_render_opti( void ) {
 			// Запись буфера вокселей
 			vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
 
+			// Расчет количества пикселей для отрисовки
+			int32_t pix_count = ( h_down - h_up );
+
 			// Получение соотношения пикселя экрана к вокселю в мире
-			vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
+			vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / pix_count );
 
 			// Расчет начальной позиции вокселя в линии
 			vv_fp_math_type vbuf_pos = .0;

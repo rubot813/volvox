@@ -63,7 +63,7 @@ bool vv_model_merge( model_s *, bool, bool, merge_mode_e );
 
 // Функция создания модели куба.
 // Принимает указатель на модель для создания, цвет и размер куба.
-void vv_model_create_cube( model_s *, color_s, uint8_t );
+void vv_model_create_cube( model_s *, color_u, uint8_t );
 
 #ifdef __cplusplus
 }

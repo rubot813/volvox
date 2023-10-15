@@ -5,7 +5,7 @@
 #include <stdint.h>     // uint, int
 #include <stdbool.h>    // bool
 #include <stdlib.h>     // malloc, free
-
+#include <inttypes.h>	// format
 /*
 	vv_world - модуль работы с миром, ячейками, сегментами, вокселями и цветами.
 */
@@ -36,12 +36,12 @@ typedef union {
         uint8_t b;
         uint8_t a;
     };  // struct
-} color_s;
+} color_u;
 
 // Структура сегмента мира
 typedef struct {
     uint8_t height; // Высота сегмента
-    color_s color;  // Цвет сегмента
+    color_u color;  // Цвет сегмента
 } segment_s;
 
 // Структура ячейки мира
@@ -61,12 +61,12 @@ typedef struct {
 	uint16_t size_x, size_y;
 
     // Цвет фона
-    color_s background_color;
+    color_u background_color;
 } world_s;
 
 // Структура буфера вокселей
 typedef struct {
-    color_s color[ VOXEL_BUFFER_ELEM_COUNT ];   // Массив цветов вокселей
+    color_u color[ VOXEL_BUFFER_ELEM_COUNT ];   // Массив цветов вокселей
     uint8_t count;                              // Количество цветов в color
 } voxel_buffer_s;
 
@@ -86,7 +86,7 @@ extern "C" {
 // Принимает размеры мира по осям X и Y и цвет фона. X и Y должны быть одинаковы и равны степени двойки. Цвет должен быть отличным от vv_transparent_color.
 // Возвращает указатель на структуру созданного мира. В случае некорректных параметров возвращает NULL.
 // Функция не устанавливает указатель на мир. Для использования вызвать vv_set_world
-world_s* vv_create_world( uint16_t, uint16_t, color_s );
+world_s* vv_create_world( uint16_t, uint16_t, color_u );
 
 // Функция удаления мира и высвобождения памяти.
 // Принимает указатель на структуру мира для удаления.
@@ -159,7 +159,7 @@ bool vv_cell_remove_segment( cell_s *, uint8_t );
 // Функция получения вокселя по высоте из структуры ячейки мира.
 // Принимает указатель на структуру ячейки мира и высоту вокселя.
 // Возвращает цвет вокселя, либо vv_transparent_color если сегмент не найден.
-color_s vv_cell_read_voxel( cell_s *, uint8_t );
+color_u vv_cell_read_voxel( cell_s *, uint8_t );
 
 // Фунцкия вывода в консоль информации о структуре ячейки мира.
 // Выводит информацию через printf.

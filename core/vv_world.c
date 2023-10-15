@@ -3,7 +3,7 @@
 world_s *_world_ptr = NULL;							// Указатель на используемый мир
 const uint32_t vv_transparent_color = 0x00000000;	// Инициализация прозрачного цвета
 
-world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_s back_color ) {
+world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_u back_color ) {
 	// Указатель на структуру мира
 	world_s *world_ptr = NULL;
 
@@ -171,11 +171,11 @@ bool vv_write_vb_to_cell( voxel_buffer_s *vb_ptr, cell_s *cell_ptr ) {
 	seg_ptr->height		= 1;
 
 	// Последние адреса буфера вокселей и массива сегментов
-	color_s *end_color_addr = ( vb_ptr->color + vb_ptr->count );
+	color_u *end_color_addr = ( vb_ptr->color + vb_ptr->count );
 	segment_s *end_seg_addr = ( cell_ptr->segment + CELL_SEGMENT_COUNT );
 
 	// Цикл по буферу вокселей с первого элемента
-	color_s *color_ptr = ( vb_ptr->color + 1 );
+	color_u *color_ptr = ( vb_ptr->color + 1 );
 	while ( color_ptr < end_color_addr ) {
 		if ( color_ptr->word ^ seg_ptr->color.word ) {
 			// Обновление общей высоты ячейки мира
@@ -208,7 +208,7 @@ lb_end:
 // Внутренняя функция смешивания цветов.
 // Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
 // Используется в vv_cell_merge
-void _color_merge_add( color_s *dst_color, color_s *src_color, bool ow_flag ) {
+void _color_merge_add( color_u *dst_color, color_u *src_color, bool ow_flag ) {
 	if ( ( ow_flag && ( src_color->word != vv_transparent_color ) ) || ( dst_color->word == vv_transparent_color ) )
 		*dst_color = *src_color;
 }	// _color_merge_add
@@ -216,7 +216,7 @@ void _color_merge_add( color_s *dst_color, color_s *src_color, bool ow_flag ) {
 // Внутренняя функция вырезания цветов.
 // Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
 // Используется в vv_cell_merge
-void _color_merge_sub( color_s *dst_color, color_s *src_color, bool ow_flag ) {
+void _color_merge_sub( color_u *dst_color, color_u *src_color, bool ow_flag ) {
 	// if ( ( ow_flag && ( src_color->word != transparent_color ) ) || ( dst_color->word == transparent_color ) )
 	if ( dst_color->word == src_color->word )
 		dst_color->word = vv_transparent_color;
@@ -239,7 +239,7 @@ uint8_t _get_next_segment( cell_s *cell_ptr, int8_t id ) {
 
 bool vv_cell_merge( cell_s *dst_cell, cell_s *src_cell, bool ow_flag, merge_mode_e mode ) {
 	// Ленивая инициализация массива функций по режимам слияния
-	static void ( *merge_func_array[ 2 ] )( color_s *, color_s *, bool ) = {
+	static void ( *merge_func_array[ 2 ] )( color_u *, color_u *, bool ) = {
 		_color_merge_add,	// mm_addition
 		_color_merge_sub	// mm_substraction
 	};	// merge_func_array
@@ -392,9 +392,9 @@ bool vv_cell_remove_segment( cell_s *cell_ptr, uint8_t id ) {
 	return result;
 }	// vv_cell_remove_segment
 
-color_s vv_cell_read_voxel( cell_s *cell_ptr, uint8_t height ) {
+color_u vv_cell_read_voxel( cell_s *cell_ptr, uint8_t height ) {
 	// Результирующий цвет вокселя
-	color_s color;
+	color_u color;
 	color.word = vv_transparent_color;
 
 	// Получение id сегмента
