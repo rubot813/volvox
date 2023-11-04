@@ -1,7 +1,6 @@
 #include "vv_world.h"
 
 world_s *_world_ptr = NULL;							// Указатель на используемый мир
-const uint32_t vv_transparent_color = 0x00000000;	// Инициализация прозрачного цвета
 
 world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_u back_color ) {
 	// Указатель на структуру мира
@@ -11,8 +10,11 @@ world_s* vv_create_world( uint16_t size_x, uint16_t size_y, color_u back_color )
 	uint16_t bit_count;
 	__asm__ volatile( "popcnt %1, %0" : "=r"( bit_count ) : "b" ( size_x ) );
 
-	// Если размеры мира кратны степени двойки и фоновый цвет отличается от прозрачного
-	if ( ( bit_count == 1 ) && ( size_x == size_y ) && ( back_color.word != vv_transparent_color ) ) {
+	// Признак валидности фонового цвета. Альфа всегда должна быть 255 (полностью непрозрачный)
+	bool back_color_valid = ( ( back_color.word != vv_transparent_color ) && ( back_color.a == 0xff ) );
+
+	// Если размеры мира кратны степени двойки и фоновый цвет валиден
+	if ( ( bit_count == 1 ) && ( size_x == size_y ) && back_color_valid ) {
 		// Выделение памяти под структуру
 		world_ptr = malloc( sizeof( world_s ) );
 
@@ -208,7 +210,7 @@ lb_end:
 // Внутренняя функция смешивания цветов.
 // Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
 // Используется в vv_cell_merge
-void _color_merge_add( color_u *dst_color, color_u *src_color, bool ow_flag ) {
+static void _color_merge_add( color_u *dst_color, color_u *src_color, bool ow_flag ) {
 	if ( ( ow_flag && ( src_color->word != vv_transparent_color ) ) || ( dst_color->word == vv_transparent_color ) )
 		*dst_color = *src_color;
 }	// _color_merge_add
@@ -216,7 +218,7 @@ void _color_merge_add( color_u *dst_color, color_u *src_color, bool ow_flag ) {
 // Внутренняя функция вырезания цветов.
 // Принимает указатель на цвет dst, цвет src и признак смешивания непрозрачных цветов
 // Используется в vv_cell_merge
-void _color_merge_sub( color_u *dst_color, color_u *src_color, bool ow_flag ) {
+static void _color_merge_sub( color_u *dst_color, color_u *src_color, bool ow_flag ) {
 	// if ( ( ow_flag && ( src_color->word != transparent_color ) ) || ( dst_color->word == transparent_color ) )
 	if ( dst_color->word == src_color->word )
 		dst_color->word = vv_transparent_color;
@@ -226,7 +228,7 @@ void _color_merge_sub( color_u *dst_color, color_u *src_color, bool ow_flag ) {
 // Принимает указатель на ячейку мира и id текущего сегмента.
 // Возвращает id следующего непустого сегмента. Если таких сегментов нет, возвращает номер последнего или +1 сегмента.
 // Используется в vv_cell_merge
-uint8_t _get_next_segment( cell_s *cell_ptr, int8_t id ) {
+static uint8_t _get_next_segment( cell_s *cell_ptr, int8_t id ) {
 	do {
 		if ( id++ >= cell_ptr->segment_count ) {
 			id = cell_ptr->segment_count;

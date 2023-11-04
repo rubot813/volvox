@@ -2,10 +2,11 @@
 #define VOLVOX_H_INCLUDED
 
 // Версия движка
-#define VOLVOX_VER 8
+#define VOLVOX_VER 9
 
 #include "render/vv_render.h"	// Подключает camera и world
 #include "core/vv_model_inc.h"	// Подключает vv_model, vv_vox
+#include "utils/vv_perlin.h"	// Шум Перлина
 
 /*
 	Заголовочный файл для подключения библиотеки volvox.
@@ -60,7 +61,7 @@
     back_color.r = 60;
     back_color.g = 120;
     back_color.b = 215;
-    back_color.a = 0xFF;
+    back_color.a = 0xff;
 
     world_s *world = vv_create_world( 1024, 1024, back_color );
     vv_set_world( world );

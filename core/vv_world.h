@@ -2,12 +2,13 @@
 #define VV_WORLD_H_INCLUDED
 
 #include <stdio.h>		// printf
-#include <stdint.h>     // uint, int
-#include <stdbool.h>    // bool
-#include <stdlib.h>     // malloc, free
 #include <inttypes.h>	// format
+
+#include "../utils/vv_color.h"	// Цвета движка. Также включает vv_defs.
+
 /*
-	vv_world - модуль работы с миром, ячейками, сегментами, вокселями и цветами.
+	vv_world - модуль работы с миром, ячейками, сегментами и вокселями.
+	Использует типы vv_color
 */
 
 // = = = = Макросы = = = =
@@ -19,25 +20,7 @@
 #define VOXEL_BUFFER_ELEM_COUNT 256
 
 // = = = = Типы = = = =
-
-// Константа прозрачного цвета (ссылка на vv_world.o)
-extern const uint32_t vv_transparent_color;
-
-// Тип математики с плавающей точкой, оптимальный для платформы ( float, double, etc )
-typedef float vv_fp_math_type;
-
 #pragma pack(push, 1)
-// Тип структуры цвета формата R/G/B/A
-typedef union {
-    uint32_t word;  // Единое слово в формате R/G/B/A
-    struct {
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        uint8_t a;
-    };  // struct
-} color_u;
-
 // Структура сегмента мира
 typedef struct {
     uint8_t height; // Высота сегмента
@@ -50,7 +33,6 @@ typedef struct {
     uint8_t segment_height_total;           // Общая высота всех сегментов
     segment_s segment[ CELL_SEGMENT_COUNT ];// Сегменты ячейки
 } cell_s;
-#pragma pack(pop)
 
 // Структура мира
 typedef struct {
@@ -69,6 +51,7 @@ typedef struct {
     color_u color[ VOXEL_BUFFER_ELEM_COUNT ];   // Массив цветов вокселей
     uint8_t count;                              // Количество цветов в color
 } voxel_buffer_s;
+#pragma pack(pop)
 
 // Перечисление режимов смешивания ячеек
 typedef enum {

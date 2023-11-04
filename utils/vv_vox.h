@@ -96,7 +96,6 @@ void vv_vox_free_buffer( vox_buffer_s * );
 // Возвращает результат чтения из файла
 vox_open_res_e vv_vox_read_file( const char *, vox_buffer_s * );
 
-
 // Функция создания модели volvox из модели .vox
 // Принимает указатель на модель .vox и указатель на модель volvox для записи.
 // Возвращает признак успеха создания модели:
@@ -107,4 +106,4 @@ bool vv_vox_create_model( vox_model_s *, model_s * );
 }
 #endif
 
-#endif // VV_MODEL_H_INCLUDED
+#endif // VV_VOX_H_INCLUDED

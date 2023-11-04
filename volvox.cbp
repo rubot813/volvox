@@ -40,6 +40,15 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="render/vv_render.h" />
+		<Unit filename="utils/vv_color.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="utils/vv_color.h" />
+		<Unit filename="utils/vv_defs.h" />
+		<Unit filename="utils/vv_perlin.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="utils/vv_perlin.h" />
 		<Unit filename="utils/vv_vox.c">
 			<Option compilerVar="CC" />
 		</Unit>

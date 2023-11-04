@@ -15,97 +15,45 @@ void vv_set_render_param( render_param_s *render_param ) {
     _render_param = *render_param;
 }   // vv_set_render_param
 
-void vv_render_base( void ) {
-	// Расчет синуса и косинуса угла поворота камеры
-	vv_fp_math_type cam_angle_sin = sin( _camera_ptr->angle );
-	vv_fp_math_type cam_angle_cos = cos( _camera_ptr->angle );
+// Внутренняя встроенная функция рендеринга вокселя.
+// Осуществляет проверку на прозрачность вокселя и смешивание по альфа - каналу.
+// Принимает указатель на цвет вокселя и цвет во фреймбуфере.
+// Возвращает признак сброса буфера глубины.
+static inline bool __attribute__( ( always_inline ) ) _render_voxel( color_u vox_color, color_u *fb_color ) {
+	// Признак сброса параметров Z - буфера
+	bool zbuf_reset_flag = false;
 
-	// Получение левой дальней точки FOV
-	vv_fp_math_type plx = ( cam_angle_cos * _camera_ptr->distance ) + ( cam_angle_sin * _camera_ptr->distance );
-	vv_fp_math_type ply = ( cam_angle_sin * _camera_ptr->distance ) - ( cam_angle_cos * _camera_ptr->distance );
+	// Получение признака непрозрачности цвета вокселя
+	bool vox_opq_sign = ( vox_color.word ^ vv_transparent_color );
 
-	// Получение правой дальней точки FOV
-	vv_fp_math_type prx = ( cam_angle_cos * _camera_ptr->distance ) - ( cam_angle_sin * _camera_ptr->distance );
-	vv_fp_math_type pry = ( cam_angle_sin * _camera_ptr->distance ) + ( cam_angle_cos * _camera_ptr->distance );
+	// Если цвет во фреймбуфере фоновый
+	if ( fb_color->word == _world_ptr->background_color.word ) {
+		if ( vox_opq_sign )
+			// Установка цвета в фреймбуфер
+			fb_color->word = vox_color.word;
+		else
+			// Сброс Z - буфера, если цвет прозрачный
+			zbuf_reset_flag = true;
 
-	// Цикл по лучам слева направо
-	for ( uint16_t ray = 0; ray < _framebuffer.width; ray++ ) {
-		// Расчет смещения x/y для бросания луча
-		vv_fp_math_type ray_delta_x = ( plx + ( prx - plx ) / _framebuffer.width * ray ) / _camera_ptr->distance;
-		vv_fp_math_type ray_delta_y = ( ply + ( pry - ply ) / _framebuffer.width * ray ) / _camera_ptr->distance;
+		// Сброс Z - буфера, если цвет имеет прозрачность
+		if ( vox_color.a < vv_alpha_opaque )
+			zbuf_reset_flag = true;
 
-		// Установка начальной позиции луча
-		vv_fp_math_type ray_x = _camera_ptr->x;
-		vv_fp_math_type ray_y = _camera_ptr->y;
+		// Если во фреймбуфере прозрачный цвет
+	} else if ( fb_color->a < vv_alpha_opaque ) {
+		// Смешивание цвета с фреймбуфером по альфа - каналу
+		if ( vox_opq_sign )
+			*fb_color = vv_cblend_alpha_pm( vox_color, *fb_color );
 
-		// Бросание луча в направлении от камеры
-		for ( uint16_t z = 1; z < _camera_ptr->distance; z++ ) {
-			// Смещение координаты точки на луче
-			ray_x += ray_delta_x;
-			ray_y += ray_delta_y;
+		// Сброс Z - буфера
+		zbuf_reset_flag = true;
+	}	// if fb_color
 
-			// Преобразование координаты точки в целое
-			int32_t rx = ( int32_t )( ray_x );
-			int32_t ry = ( int32_t )( ray_y );
+	return zbuf_reset_flag;
+}	// _apply_alpha_blend
 
-			// Проверка на выход точки на луче за пределы мира
-			if ( ( rx >= _world_ptr->size_x ) || ( rx < 0 ) )
-				continue;
-			if ( ( ry >= _world_ptr->size_y ) || ( ry < 0 ) )
-				continue;
-
-			// Получение текущей ячейки мира
-			cell_s *cell_ptr = vv_world_get_cell( rx, ry );
-
-			// Получение высоты верхней точки линии
-			int16_t h_up = ( ( vv_fp_math_type )( _camera_ptr->height - cell_ptr->segment_height_total ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
-
-			// Получение высоты нижней точки линии
-			int16_t h_down = ( ( vv_fp_math_type )( _camera_ptr->height ) / z * _camera_ptr->v_scale + _camera_ptr->horizon );
-
-			// Проверка на попадание линии в экран
-			if ( ( h_up > _framebuffer.height ) || ( h_down < 0 ) )
-				continue;
-
-            // Запись буфера вокселей
-            vv_write_cell_to_vb( cell_ptr, &( _voxel_buffer ) );
-
-            // Получение соотношения пикселя экрана к вокселю в мире
-			vv_fp_math_type pix_coeff = ( ( vv_fp_math_type )( cell_ptr->segment_height_total ) / ( h_down - h_up ) );
-
-            // Расчет начального цвета вокселя в линии
-			vv_fp_math_type vbuf_pos = .0f;
-			if ( h_down > _framebuffer.height )
-				vbuf_pos = ( h_down - _framebuffer.height ) * pix_coeff;
-
-			// Конечная y координата отрисовки линии
-			int16_t end_y = ( h_up >= 0 ) ? h_up : -1;
-
-			// Начальная координата отрисовки и счетчик
-			uint16_t fb_pix = (_framebuffer.height - 1 );
-			int16_t pos_y = ( h_down < fb_pix ) ? h_down : fb_pix;
-
-			// Отрисовка линии
-			while ( pos_y > end_y ) {
-				// Получение id пикселя фреймбуфера
-				uint32_t id = ( pos_y-- * _framebuffer.width ) + ray;
-
-				// Получение цвета вокселя
-				uint32_t color = _voxel_buffer.color[ ( uint8_t )( vbuf_pos ) ].word;
-
-				// Отрисовка, если цвет вокселя не прозрачный и цвет во фреймбуфере фоновый
-				if ( ( color ^ vv_transparent_color ) && ( _framebuffer.data[ id ] == _world_ptr->background_color.word ) )
-					_framebuffer.data[ id ] = color;
-
-				// Смещение цвета вокселя
-				vbuf_pos += pix_coeff;
-            }   // while
-        }   // for z
-    }   // for screen size width (x)
-}	// vv_render_base
-
-void vv_render_opti( void ) {
-	// Предварительный расчет старшего выставленного бита размера бита
+void vv_render( void ) {
+	// Предварительный расчет старшего выставленного бита размера мира
 	// Для последующей проверки точки на луче на выход за пределы мира.
 	static uint16_t rng_bit;
 	__asm__ volatile( "bsr %1, %0" : "=r"( rng_bit ) : "b" ( _world_ptr->size_x ) );
@@ -207,19 +155,19 @@ void vv_render_opti( void ) {
 				uint32_t id = ( pos_y-- * _framebuffer.width ) + ray;
 
 				// Получение цвета вокселя
-				uint32_t color = _voxel_buffer.color[ ( uint8_t )( vbuf_pos ) ].word;
+				color_u color = _voxel_buffer.color[ ( uint8_t )( vbuf_pos ) ];
 
-				// Если цвет во фреймбуфере фоновый
-				if ( _framebuffer.data[ id ] == _world_ptr->background_color.word ) {
-					// Если цвет вокселя не фоновый, то отрисовка, иначе сброс Z-буфера
-					if ( color ^ vv_transparent_color )
-						_framebuffer.data[ id ] = color;
-					else {
-						// Сброс параметров Z - буфера
-						h_up_zbuf	= INT16_MAX;
-						h_down_zbuf	= INT16_MIN;
-					}	// if color
-				}	// if
+				// Получение указателя на цвет фреймбуфера
+				color_u *fb_color = ( color_u * )( _framebuffer.data + id );
+
+				// Отрисовка вокселя во фреймбуфер и получение признака сброса параметров Z - буфера
+				bool zbuf_reset_flag = _render_voxel( color, fb_color );
+
+				// Сброс параметров Z - буфера, если установлен флаг
+				if ( zbuf_reset_flag ) {
+					h_up_zbuf	= INT16_MAX;
+					h_down_zbuf	= INT16_MIN;
+				}	// if zbuf_reset_flag
 
 				// Смещение цвета вокселя
 				vbuf_pos += pix_coeff;
@@ -229,4 +177,4 @@ lb_ray_end:
 			z += lod_coeff;
 		}	// while z
     }   // for screen size width (x)
-}	// vv_render_opti
+}	// vv_render
