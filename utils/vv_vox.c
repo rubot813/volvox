@@ -1,9 +1,20 @@
 #include "vv_vox.h"
-#define VOX_CHUNK_COUNT 15		// Общее количество чанков
-#define VOX_ALLOW_CHUNK_COUNT 5	// Количество поддерживаемых чанков
 
-// Инициализация палитры цветов файла .vox по умолчанию
-const uint32_t vox_default_palette[ 256 ] = {
+// Макросы
+#ifndef VOX_CHUNK_COUNT
+#define VOX_CHUNK_COUNT 15		// Общее количество чанков
+#endif // VOX_CHUNK_COUNT
+
+#ifndef VOX_ALLOW_CHUNK_COUNT
+#define VOX_ALLOW_CHUNK_COUNT 5	// Количество поддерживаемых чанков
+#endif // VOX_ALLOW_CHUNK_COUNT
+
+#ifndef VOX_COLOR_PALETTE_COUNT
+#define VOX_COLOR_PALETTE_COUNT 256	// Количество цветов в палитер
+#endif // VOX_COLOR_PALETTE_COUNT
+
+// Инициализация палитры цветов файла .vox по умолчанию (RGBA)
+const uint32_t vox_default_palette[ VOX_COLOR_PALETTE_COUNT ] = {
    0x00000000, 0xffffffff, 0xffccffff, 0xff99ffff, 0xff66ffff, 0xff33ffff, 0xff00ffff, 0xffffccff,
    0xffccccff, 0xff99ccff, 0xff66ccff, 0xff33ccff, 0xff00ccff, 0xffff99ff, 0xffcc99ff, 0xff9999ff,
    0xff6699ff, 0xff3399ff, 0xff0099ff, 0xffff66ff, 0xffcc66ff, 0xff9966ff, 0xff6666ff, 0xff3366ff,
@@ -71,11 +82,45 @@ static const char *vox_header_chunk[ VOX_CHUNK_COUNT ] = {	"MAIN",	// Загол
 															"NOTE"	// Названия цветов палитры
 														};	// vox_header_chunk
 
-// Идентификатор читаемой модели
+// Идентификатор читаемой модели. Начинается с нуля.
 static uint8_t model_read_id = 0;
 
-// Признаки чтения вокселей и цветов модели
-static bool model_voxel_flag, model_color_flag;
+// Внутренняя функция выделения памяти под новую модель в буфере.
+// Осуществляет перераспределение памяти, увеличивает количество моделей на 1.
+// Возвращает признак успеха выделения памяти под модель.
+static bool _vox_buffer_append_model( vox_buffer_s *buffer_ptr ) {
+	// Признак успеха выделения памяти под модель
+	bool append_result = true;
+
+	// Выделение памяти под модели
+	vox_model_s *model_ptr = calloc( ( buffer_ptr->model_count + 1 ), sizeof( vox_model_s ) );
+
+	// Если память не выделена
+	if ( !model_ptr ) {
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox buffer append model: memory allocation error\n" );
+#endif // VOX_PRINT_DEBUG
+		append_result = false;
+		goto lb_buffer_append_model_end;
+	}	// if model_ptr
+
+	// Копирование имеющихся моделей в выделенную память
+	if ( buffer_ptr->model_count )
+		memcpy( model_ptr, buffer_ptr->model_ptr, sizeof( vox_model_s ) * buffer_ptr->model_count );
+
+	// Очистка памяти по старому указателю
+	free( buffer_ptr->model_ptr );
+
+	// Обнуление параметров модели
+	memset( &( model_ptr[ buffer_ptr->model_count ] ), 0x00, sizeof( vox_model_s ) );
+
+	// Установка нового указателя и увеличение количества моделей
+	buffer_ptr->model_ptr = model_ptr;
+	buffer_ptr->model_count++;
+
+lb_buffer_append_model_end:
+	return append_result;
+}	// _vox_buffer_append_model
 
 static vox_parse_res_e _vox_parse_chunk_main( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
 	// Сохранение размера файла (байт)
@@ -91,8 +136,7 @@ static vox_parse_res_e _vox_parse_chunk_pack( FILE *file, vox_chunk_header_u *ch
 	vox_parse_res_e parse_res = vp_ok;
 
 	// Чтение количества моделей в файле (u32)
-	uint32_t model_count = 0;
-	if ( fread( &model_count, sizeof( uint32_t ), 1, file ) != 1 ) {
+	if ( fread( &( buffer_ptr->model_count ), sizeof( uint32_t ), 1, file ) != 1 ) {
 		// Чтение не удалось, ошибка чтения
 #ifdef VOX_PRINT_DEBUG
 		printf( "vox parse chunk pack: read error\n" );
@@ -102,26 +146,26 @@ static vox_parse_res_e _vox_parse_chunk_pack( FILE *file, vox_chunk_header_u *ch
 	}	// if fread
 
 	// Проверка количества моделей в файле ( 1 .. 15 )
-	if ( model_count && ( model_count < 16 ) ) {
+	if ( buffer_ptr->model_count && ( buffer_ptr->model_count < 16 ) ) {
 		// Неверное количество моделей в файле, некорректный формат файла
 #ifdef VOX_PRINT_DEBUG
-		printf( "vox parse chunk pack: wrong model count[%u]\n", model_count );
+		printf( "vox parse chunk pack: wrong model count[%u]\n", buffer_ptr->model_count );
 #endif // VOX_PRINT_DEBUG
 		parse_res = vp_wrong_format;
 		goto lb_parse_chunk_pack_end;
 	}	// if model_count
 
-	// Установка количества моделей в буфере модели
-	buffer_ptr->model_count = model_count;
-
 	// Выделение памяти под модели
-	buffer_ptr->model_ptr = calloc( buffer_ptr->model_count, sizeof( sizeof( vox_model_s ) ) );
+	buffer_ptr->model_ptr = calloc( buffer_ptr->model_count, sizeof( vox_model_s ) );
+
+	// Обнуление массива моделей
+	memset( buffer_ptr->model_ptr, 0x00, sizeof( vox_model_s ) * buffer_ptr->model_count );
 
 	// Если память не выделена
 	if ( !buffer_ptr->model_ptr ) {
 		// Память не выделена, ошибка памяти
 #ifdef VOX_PRINT_DEBUG
-			printf( "vox parse chunk pack: memory allocation error\n" );
+		printf( "vox parse chunk pack: memory allocation error\n" );
 #endif // VOX_PRINT_DEBUG
 		parse_res = vp_memory_error;
 		goto lb_parse_chunk_pack_end;
@@ -136,24 +180,154 @@ lb_parse_chunk_pack_end:
 }	// _vox_parse_chunk_pack
 
 static vox_parse_res_e _vox_parse_chunk_size( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
-	printf( "OK! size\n" );
-	// Переход к концу чанка
-	fseek( file, chunk_header->chunk_size, SEEK_CUR );
-	return vp_ok;
+	// Результат разбора чанка
+	vox_parse_res_e parse_res = vp_ok;
+
+	// Проверка перехода на следующую модель
+	// Если под текущую модель выделена память
+	if ( model_read_id < buffer_ptr->model_count )
+		// Если в текущую модель прочитаны воксели
+		if ( buffer_ptr->model_ptr[ model_read_id ].voxel_ptr )
+			// Переход к следующей модели
+			model_read_id++;
+
+	// Проверка наличия памяти, выделенной под модель
+	if ( model_read_id >= buffer_ptr->model_count ) {
+		// Выделение памяти под модель
+		if ( !_vox_buffer_append_model( buffer_ptr ) ) {
+			// Ошибка выделения памяти под модель
+#ifdef VOX_PRINT_DEBUG
+			printf( "vox parse chunk size: memory allocation error\n" );
+#endif // VOX_PRINT_DEBUG
+			parse_res = vp_memory_error;
+			goto lb_parse_chunk_size_end;
+		}	// if _vox_buffer_append_model
+	}	// if model_read_id
+
+	// Получение указателя на текущую модель
+	vox_model_s *model_ptr = &( buffer_ptr->model_ptr[ model_read_id ] );
+
+	// Чтение размера модели по осям X, Y, Z. u32 каждая компонента
+	if ( fread( &( model_ptr->size_x ), sizeof( uint32_t ) * 3, 1, file ) != 1 ) {
+		// Чтение не удалось, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk size: read error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_read_error;
+		goto lb_parse_chunk_size_end;
+	}	// if fread
+
+	// Проверка размера модели
+	if ( model_ptr->size_x && model_ptr->size_y && model_ptr->size_z && ( model_ptr->size_z < 256 ) ) {
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk size: sucess! id: %u, x: %u, y: %u, z: %u\n", model_read_id,
+				model_ptr->size_x, model_ptr->size_y, model_ptr->size_z );
+#endif // VOX_PRINT_DEBUG
+	} else {
+		// Размер модели некорректный
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk size: wrong model size\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_wrong_format;
+	}	// if model_ptr size
+
+lb_parse_chunk_size_end:
+	return parse_res;
 }	// _vox_parse_chunk_size
 
 static vox_parse_res_e _vox_parse_chunk_xyzi( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
-	printf( "OK! xyzi\n" );
-	// Переход к концу чанка
-	fseek( file, chunk_header->chunk_size, SEEK_CUR );
-	return vp_ok;
+	// Результат разбора чанка
+	vox_parse_res_e parse_res = vp_ok;
+
+	// Получение указателя на текущую модель
+	vox_model_s *model_ptr = &( buffer_ptr->model_ptr[ model_read_id ] );
+
+	// Чтение количества вокселей модели (u32)
+	if ( fread( &( model_ptr->voxel_count ), sizeof( uint32_t ), 1, file ) != 1 ) {
+		// Чтение не удалось, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk xyzi: voxel count read error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_read_error;
+		goto lb_parse_chunk_xyzi_end;
+	}	// if fread
+
+	// Выделение памяти под воксели модели
+	model_ptr->voxel_ptr = malloc( sizeof( vox_voxel_u ) * model_ptr->voxel_count );
+
+	// Если память под воксели не выделена
+	if ( !model_ptr->voxel_ptr ) {
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk xyzi: memory alloc error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_memory_error;
+		goto lb_parse_chunk_xyzi_end;
+	}	// if !voxel_ptr
+
+	// Чтение вокселей модели
+	if ( fread( model_ptr->voxel_ptr, sizeof( vox_voxel_u ), model_ptr->voxel_count, file ) != model_ptr->voxel_count ) {
+		// Чтение не удалось, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk xyzi: voxel data read error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_read_error;
+		goto lb_parse_chunk_xyzi_end;
+	}	// if fread
+
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk xyzi: read voxel data done. count = %u\n", model_ptr->voxel_count );
+#endif // VOX_PRINT_DEBUG
+
+lb_parse_chunk_xyzi_end:
+	return parse_res;
 }	// _vox_parse_chunk_xyzi
 
 static vox_parse_res_e _vox_parse_chunk_rgba( FILE *file, vox_chunk_header_u *chunk_header, vox_buffer_s *buffer_ptr ) {
-	printf( "OK! rgba. size = %u\n", chunk_header->chunk_size );
-	// Переход к концу чанка
-	fseek( file, chunk_header->chunk_size, SEEK_CUR );
-	return vp_ok;
+	// Результат разбора чанка
+	vox_parse_res_e parse_res = vp_ok;
+
+	// Получение указателя на текущую модель
+	vox_model_s *model_ptr = &( buffer_ptr->model_ptr[ model_read_id ] );
+
+	// Выделение памяти под палитру цветов модели
+	model_ptr->color_palette = malloc( sizeof( color_u ) * VOX_COLOR_PALETTE_COUNT );
+
+	// Если память подпалитру цветов не выделена
+	if ( !model_ptr->color_palette ) {
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk rgba: memory alloc error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_memory_error;
+		goto lb_parse_chunk_rgba_end;
+	}	// if !color_palette_ptr
+
+	// Чтение вокселей модели
+	if ( fread( model_ptr->color_palette, sizeof( color_u ), VOX_COLOR_PALETTE_COUNT, file ) != VOX_COLOR_PALETTE_COUNT ) {
+		// Чтение не удалось, ошибка чтения
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk rgba: color palette read error\n" );
+#endif // VOX_PRINT_DEBUG
+		parse_res = vp_read_error;
+		goto lb_parse_chunk_rgba_end;
+	}	// if fread
+
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox parse chunk rgba: color palette read done\n" );
+#endif // VOX_PRINT_DEBUG
+
+	// Установка палитры для всех моделей до текущей (в файле версии 200 чанк RGBA может идти в конце для всех моделей)
+	vox_model_s *id_model_ptr = buffer_ptr->model_ptr;
+	while ( id_model_ptr < ( buffer_ptr->model_ptr + model_read_id ) ) {
+		// Если заданы воксели модели и не задана палитра
+		if ( id_model_ptr->voxel_ptr && !( id_model_ptr->color_palette ) )
+			id_model_ptr->color_palette = model_ptr->color_palette;
+
+		// Переход к следующей модели
+		id_model_ptr++;
+	}	// while
+
+lb_parse_chunk_rgba_end:
+	return parse_res;
 }	// _vox_parse_chunk_rgba
 
 // Внутренняя функция разбора чанка файла .vox
@@ -162,9 +336,6 @@ static vox_parse_res_e _vox_parse_chunk_rgba( FILE *file, vox_chunk_header_u *ch
 static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buffer_s *buffer_ptr ) {
 	// Результат разбора чанка
 	bool parse_result = true;
-
-	// Сброс id читаемой модели
-	model_read_id = 0;
 
 	// Ленивая инициализация массива функций разбора чанков
 	static vox_parse_res_e ( *parse_func_array[ VOX_ALLOW_CHUNK_COUNT ] )( FILE *, vox_chunk_header_u *, vox_buffer_s * ) = {
@@ -211,11 +382,10 @@ static bool _vox_parse_chunk( FILE *file, vox_open_res_e *open_res_ptr, vox_buff
 				// Сохранение результата разбора чанка.
 				// Каст vox_open_res_e к vox_parse_res_e !
 				*open_res_ptr = ( vox_open_res_e )( parse_res );
-			}	// if chunk_id
-#ifdef VOX_PRINT_DEBUG
-			else
-				printf( "vox parse chunk: (warning) unsupported chunk [id %u]\n", chunk_id );
-#endif // VOX_PRINT_DEBUG
+			} else
+				// Чанк не поддерживается, переход к концу чанка
+				fseek( file, chunk_header.chunk_size, SEEK_CUR );
+
 			break;
 		}	// if !memcmp
 	}	// for chunk_id
@@ -303,19 +473,30 @@ vox_open_res_e vv_vox_read_file( const char *file_name, vox_buffer_s *vox_buffer
 	}	// if header
 
 	// Проверка версии файла
-	if ( header.version != VOX_VERSION ) {
+	if ( ( header.version != VOX_VERSION_150 ) && ( header.version != VOX_VERSION_200 ) ) {
 		// Версия файла некорректна, ошибка версии
 #ifdef VOX_PRINT_DEBUG
-		printf( "vox read file: file version error\n" );
+		printf( "vox read file: file version error [%u]\n", header.version );
 #endif // VOX_PRINT_DEBUG
 		open_res = vo_wrong_version;
 		goto lb_read_file_end;
 	}	// if header version
 
+	// Инициализация id читаемой модели
+	model_read_id = 0;
+
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox read file: start parse file. version [%u]\n", header.version );
+#endif // VOX_PRINT_DEBUG
+
 	// Разбор чанков файла
 	while ( _vox_parse_chunk( file, &open_res, vox_buffer_ptr ) ) {
 		;
 	}	// _while vox_parse_chunk
+
+#ifdef VOX_PRINT_DEBUG
+		printf( "vox read file: parse file done.\n" );
+#endif // VOX_PRINT_DEBUG
 
 lb_read_file_end:
 	// Закрытие файла
@@ -325,146 +506,100 @@ lb_read_file_end:
 }	// vv_vox_read_file
 
 bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
-	return true;
-}	// vv_vox_create_model
+	// Результат создания модели
+	bool create_result = true;
 
-/*
-bool vv_vox_file_read( const char *file_name, model_vox_s *model_vox_ptr, uint8_t index ) {
-	// Результат чтения файла
-	bool read_result = true;
+	// Размер плоскости модели (XY)
+	uint32_t model_flat_size = ( vox_model_ptr->size_x * vox_model_ptr->size_y );
 
-	FILE *file = NULL;
-	file = fopen( file_name, "rb" );
-	if ( file == NULL ) {
-		read_result = false;
-		goto lb_vox_file_read_end;
-	}	// if
-	printf( "file open ok" );
+	// Создание матрицы буферов вокселей
+	voxel_buffer_s *vb_ptr = NULL;
+	vb_ptr = malloc( model_flat_size * sizeof( voxel_buffer_s ) );
 
-	char header[ 5 ];
-	header[ 4 ] = '\0';
-	uint32_t version;
+	// Проверка выделения памяти
+	if ( !vb_ptr ) {
+		// Ошибка выделения памяти
+		create_result = false;
+		goto lb_create_model_end;
+	}	// if !vb_ptr
 
-	fread( header, 4, 1, file );
-	fread( &version, 4, 1, file );
+	// Обнуление матрицы буферов вокселей
+	memset( vb_ptr, 0x00, model_flat_size * sizeof( voxel_buffer_s ) );
 
-	//printf( "header = %s\n", header );
-	//printf( "version = %u\n", version );
+	// Инициализация размеров модели
+	model_ptr->size_x = vox_model_ptr->size_x;
+	model_ptr->size_y = vox_model_ptr->size_y;
+	model_ptr->size_z = 0;
 
-	// read main
-	uint32_t chunk_size, children_size;
-	fread( header, 4, 1, file );
-	fread( &chunk_size, 4, 1, file );
-	fread( &children_size, 4, 1, file );
-
-	printf( "header = %s\n", header );
-	printf( "chunk_size = %u\n", chunk_size );
-	printf( "file_size = %u\n", children_size );
-
-
-	// size
-	fread( header, 4, 1, file );
-	fread( &chunk_size, 4, 1, file );
-	fread( &children_size, 4, 1, file );
-	fread( &model_vox_ptr->size_x, 4, 1, file );
-	fread( &model_vox_ptr->size_y, 4, 1, file );
-	fread( &model_vox_ptr->size_z, 4, 1, file );
-
-
-	printf( "header = %s\n", header );
-	printf( "chunk_size = %u\n", chunk_size );
-	printf( "children_size = %u\n", children_size );
-	printf( "size_x = %u\n", model_vox_ptr->size_x );
-	printf( "size_y = %u\n", model_vox_ptr->size_y );
-	printf( "size_z = %u\n", model_vox_ptr->size_z );
-
-
-	// read xyzi
-	fread( header, 4, 1, file );
-	fread( &chunk_size, 4, 1, file );
-	fread( &children_size, 4, 1, file );
-	fread( &model_vox_ptr->voxel_count, 4, 1, file );
-
-	printf( "header = %s\n", header );
-	printf( "chunk_size = %u\n", chunk_size );
-	printf( "children_size = %u\n", children_size );
-	printf( "vox count = %u\n", model_vox_ptr->voxel_count );
-	printf( "\n" );
-
-	model_vox_ptr->voxel = malloc( sizeof( voxel_vox_s ) * model_vox_ptr->voxel_count );
-	fread( model_vox_ptr->voxel, sizeof( voxel_vox_s ), model_vox_ptr->voxel_count, file );
-
-	// read rgba
-	bool rgba_read = false;
-	while ( !rgba_read ) {
-		fread( header, 4, 1, file );
-		fread( &chunk_size, 4, 1, file );
-		fread( &children_size, 4, 1, file );
-		//printf( "header = %s\n", header );
-		//printf( "chunk_size = %u\n", chunk_size );
-		//printf( "children_size = %u\n", children_size );
-
-		if ( header[ 0 ] == 'R' && header[ 1 ] == 'G' ) {
-			//printf( "here yay!" );
-
-			model_vox_ptr->color_palette = malloc( sizeof( color_u ) * 256 );
-			fread( model_vox_ptr->color_palette, sizeof( color_u ), 256, file );
-			rgba_read = true;
-		} else {
-			//printf( "skip chunk\n" );
-			fseek( file, chunk_size, SEEK_CUR );
-		}
-	}
-
-
-	//for ( uint32_t voxel = 0; voxel < model_vox_ptr->voxel_count; voxel++ )
-	//	printf( "voxel #%u x = %u, y = %u, z = %u, c = %u\n", voxel,
-	//			model_vox_ptr->voxel[ voxel ].x,
-	//			model_vox_ptr->voxel[ voxel ].y,
-	//			model_vox_ptr->voxel[ voxel ].z,
-	//			model_vox_ptr->voxel[ voxel ].color_index );
-
-
-lb_vox_file_read_end:
-	return read_result;
-}	// vv_vox_file_read
-
-void vv_vox_create_model( model_vox_s *model_vox_ptr, model_s *model_ptr ) {
-	voxel_buffer_s *vb_ptr = malloc( model_vox_ptr->size_x * model_vox_ptr->size_y * sizeof( voxel_buffer_s ) );
-	memset( vb_ptr, 0x00, model_vox_ptr->size_x * model_vox_ptr->size_y * sizeof( voxel_buffer_s ) );
-
-	model_ptr->size_x = model_vox_ptr->size_x;
-	model_ptr->size_y = model_vox_ptr->size_y;
-
+	// Обнуление позиции модели
 	model_ptr->position_x = 0;
 	model_ptr->position_y = 0;
-	model_ptr->position_z = 0;
-	const uint32_t *cb_ptr = model_vox_ptr->color_palette;
-	if ( cb_ptr == NULL )
-		cb_ptr = vox_default_palette;
+	model_ptr->_position_h = 1;	// Базовая высота
 
-	for( uint32_t i = 0; i < model_vox_ptr->voxel_count; i++ ) {
-		voxel_vox_s *voxel = &model_vox_ptr->voxel[ i ];
-		uint32_t id = ( voxel->x * model_ptr->size_x ) + voxel->y;
-		//printf( "set x: %u, y: %u, z: %u, id: %u\n", voxel->x, voxel->y, voxel->z, id );
-		voxel_buffer_s *vbp = &vb_ptr[ id ];
-		vbp->color[ voxel->z ].word = cb_ptr[ voxel->color_index - 1 ];
-		if ( voxel->z >= vbp->count )
-			vbp->count = ( voxel->z + 1 );
-	}
+	// Получение указателя на палитру цветов (u32 RGBA)
+	const uint32_t *color_palette_ptr = vox_model_ptr->color_palette;
+	if ( color_palette_ptr == NULL )
+		color_palette_ptr = vox_default_palette;
 
-	model_ptr->cell = malloc( model_ptr->size_x * model_ptr->size_y * sizeof( cell_s ) );
-	memset( model_ptr->cell, 0x00, model_ptr->size_x * model_ptr->size_y * sizeof( cell_s ) );
+	// Обработка цветов модели.
+	// Цикл по вокселям модели
+	for ( uint32_t i = 0; i < vox_model_ptr->voxel_count; i++ ) {
+		// Получение указателя на воксель
+		vox_voxel_u *voxel_ptr = &( vox_model_ptr->voxel_ptr[ i ] );
 
-	//printf( "model sx = %u, model sy = %u", model_ptr->size_x, model_ptr->size_y );
+		// Получение id вокселя/буфера вокселей
+		uint32_t id = ( voxel_ptr->y * model_ptr->size_y ) + voxel_ptr->x;
 
+		// Получение указателя на буфер вокселей
+		voxel_buffer_s *vb_id_ptr = &( vb_ptr[ id ] );
+
+		// Установка цвета вокселя в буфере (u32)
+		vb_id_ptr->color[ voxel_ptr->z ].word = color_palette_ptr[ voxel_ptr->color_index - 1 ];
+
+		// Обновление количества вокселей в буфере
+		if ( voxel_ptr->z >= vb_id_ptr->count )
+			vb_id_ptr->count = ( voxel_ptr->z + 1 );
+
+		// Обновление высоты модели
+		if ( voxel_ptr->z > model_ptr->size_z )
+			model_ptr->size_z = ( voxel_ptr->z + 1 );
+	}	// for voxel
+
+	// Выделение памяти под ячейки модели
+	model_ptr->cell = malloc( model_flat_size * sizeof( cell_s ) );
+
+	// Проверка выделения памяти
+	if ( !model_ptr->cell ) {
+		// Ошибка выделения памяти
+		create_result = false;
+		goto lb_create_model_end;
+	}	// !cell_ptr
+
+	// Обнуление матрицы ячеек модели
+	memset( model_ptr->cell, 0x00, model_flat_size * sizeof( cell_s ) );
+
+	// Цикл по ячейкам модели
 	for ( uint16_t x = 0; x < model_ptr->size_x; x++ )
 		for ( uint16_t y = 0; y < model_ptr->size_y; y++ ) {
-			uint32_t id = ( x * model_ptr->size_x ) + y;
-			vv_write_vb_to_cell( &vb_ptr[ id ], &model_ptr->cell[ id ] );
-			vv_cell_optimize( &model_ptr->cell[ id ] );
-			vv_cell_push_front( &model_ptr->cell[ id ], 5 );
-		}
+			// Получение id ячейки
+			uint32_t id = ( y * model_ptr->size_y ) + x;
 
+			// Получение указателя на ячейку
+			cell_s *cell_ptr = &( model_ptr->cell[ id ] );
+
+			// Преобразование буфера вокселей в ячейку
+			vv_write_vb_to_cell( &( vb_ptr[ id ] ), cell_ptr );
+
+			// Оптимизация ячейки
+			vv_cell_optimize( cell_ptr );
+
+			// Замена нулевого цвета на прозрачный
+			vv_cell_update_null( cell_ptr );
+
+			// Формирование нулевого сегмента для установки высоты.
+			vv_cell_push_front( cell_ptr, 1 );
+		}	// for
+
+lb_create_model_end:
+	return create_result;
 }	// vv_vox_create_model
-*/

@@ -104,6 +104,19 @@ bool vv_cell_optimize( cell_s *cell_ptr ) {
 	return opt_flag;
 }	// vv_cell_optimize
 
+void vv_cell_update_null( cell_s *cell_ptr ) {
+	// Указатель на сегменты ячейки
+	segment_s *seg_ptr = cell_ptr->segment;
+
+	// Проход по всем сегментам
+	while ( seg_ptr < ( cell_ptr->segment + cell_ptr->segment_count ) ) {
+		// Замена цвета с нулевого на прозрачный
+		if ( !( seg_ptr->color.word ) )
+			seg_ptr->color.word = vv_transparent_color;
+		seg_ptr++;
+	} // while segment
+}	// vv_cell_update_null
+
 bool vv_cell_push_back( cell_s *cell_ptr, uint8_t height ) {
 	// Результат выполнения операции
 	bool result = true;

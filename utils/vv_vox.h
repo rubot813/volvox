@@ -12,8 +12,9 @@
 
 // = = = = Макросы = = = =
 
-// Поддерживаемая версия файла
-#define VOX_VERSION 150
+// Поддерживаемые версии файла .vox
+#define VOX_VERSION_150 150	// Старый формат файла
+#define VOX_VERSION_200 200	// Новый формат файла
 
 // Макрос вывода отладочных сообщений модуля в консоль
 #define VOX_PRINT_DEBUG
@@ -57,7 +58,6 @@ typedef union {
         uint8_t color_index;	// Индекс цвета вокселя
     };  // struct
 } vox_voxel_u;
-#pragma pack(pop)
 
 // Тип структуры модели .vox файла
 typedef struct {
@@ -68,6 +68,8 @@ typedef struct {
 	vox_voxel_u *voxel_ptr;		// Указатель на буфер вокселей
 	uint32_t	*color_palette;	// Указатель на палитру цветов (формат RGBA). NULL - палитра по умолчанию (vox_default_palette)
 } vox_model_s;
+#pragma pack(pop)
+
 
 // Тип буфера .vox файла
 typedef struct {
