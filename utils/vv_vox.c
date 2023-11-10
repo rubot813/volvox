@@ -146,7 +146,7 @@ static vox_parse_res_e _vox_parse_chunk_pack( FILE *file, vox_chunk_header_u *ch
 	}	// if fread
 
 	// Проверка количества моделей в файле ( 1 .. 15 )
-	if ( buffer_ptr->model_count && ( buffer_ptr->model_count < 16 ) ) {
+	if ( !buffer_ptr->model_count || ( buffer_ptr->model_count > 16 ) ) {
 		// Неверное количество моделей в файле, некорректный формат файла
 #ifdef VOX_PRINT_DEBUG
 		printf( "vox parse chunk pack: wrong model count[%u]\n", buffer_ptr->model_count );
@@ -582,7 +582,7 @@ bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
 		vb_id_ptr->color[ voxel_ptr->z ].word = color_palette_ptr[ voxel_ptr->color_index - 1 ];
 
 		// Обновление количества вокселей в буфере
-		if ( vb_id_ptr->count < voxel_ptr->z )
+		if ( vb_id_ptr->count <= voxel_ptr->z )
 			vb_id_ptr->count = ( voxel_ptr->z + 1 );
 
 		// Обновление высоты модели
