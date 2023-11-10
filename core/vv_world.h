@@ -14,10 +14,10 @@
 // = = = = Макросы = = = =
 
 // Количество сегментов в ячейке мира
-#define CELL_SEGMENT_COUNT 16
+#define CELL_SEGMENT_COUNT 24
 
 // Количество элементов в буфере вокселей
-#define VOXEL_BUFFER_ELEM_COUNT 256
+#define VOXEL_BUFFER_ELEM_COUNT 255
 
 // = = = = Типы = = = =
 #pragma pack(push, 1)

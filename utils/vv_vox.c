@@ -505,6 +505,24 @@ lb_read_file_end:
 	return open_res;
 }	// vv_vox_read_file
 
+// Внутренняя функция проверки валидности вокселя модели.
+// Проверяет координаты и индекс цвета.
+static bool _vox_check_voxel( vox_model_s *vox_model_ptr, uint32_t id ) {
+	// Результат выполнения операции
+	bool check_result = false;
+
+	// Получение указателя на воксель
+	vox_voxel_u *voxel_ptr = &( vox_model_ptr->voxel_ptr[ id ] );
+
+	// Проверка координат вокселя
+	if ( voxel_ptr->x < vox_model_ptr->size_x &&
+		 voxel_ptr->y < vox_model_ptr->size_y &&
+		 voxel_ptr->z < vox_model_ptr->size_z && voxel_ptr->color_index )
+		 check_result = true;
+
+	return check_result;
+}	// _vox_check_voxel
+
 bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
 	// Результат создания модели
 	bool create_result = true;
@@ -514,7 +532,7 @@ bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
 
 	// Создание матрицы буферов вокселей
 	voxel_buffer_s *vb_ptr = NULL;
-	vb_ptr = malloc( model_flat_size * sizeof( voxel_buffer_s ) );
+	vb_ptr = calloc( model_flat_size, sizeof( voxel_buffer_s ) );
 
 	// Проверка выделения памяти
 	if ( !vb_ptr ) {
@@ -543,30 +561,41 @@ bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
 
 	// Обработка цветов модели.
 	// Цикл по вокселям модели
-	for ( uint32_t i = 0; i < vox_model_ptr->voxel_count; i++ ) {
-		// Получение указателя на воксель
-		vox_voxel_u *voxel_ptr = &( vox_model_ptr->voxel_ptr[ i ] );
-
+	vox_voxel_u *voxel_ptr = vox_model_ptr->voxel_ptr;
+	while ( voxel_ptr < ( vox_model_ptr->voxel_ptr + vox_model_ptr->voxel_count ) ) {
 		// Получение id вокселя/буфера вокселей
-		uint32_t id = ( voxel_ptr->y * model_ptr->size_y ) + voxel_ptr->x;
+		uint32_t id = ( voxel_ptr->y * model_ptr->size_x ) + voxel_ptr->x;
+
+		// Проверка координат и цветового индекса вокселя
+		if ( !_vox_check_voxel( vox_model_ptr, id ) ) {
+#ifdef VOX_PRINT_DEBUG
+			printf( "vox create model: voxel check fail. id: %u, x: %u, y: %u, z: %u, i: %u\n",
+				id, voxel_ptr->x, voxel_ptr->y, voxel_ptr->z, voxel_ptr->color_index );
+#endif // VOX_PRINT_DEBUG
+			goto lb_create_model_while_end;
+		}	// if !voxel_check
 
 		// Получение указателя на буфер вокселей
-		voxel_buffer_s *vb_id_ptr = &( vb_ptr[ id ] );
+		voxel_buffer_s *vb_id_ptr = ( vb_ptr + id );
 
 		// Установка цвета вокселя в буфере (u32)
 		vb_id_ptr->color[ voxel_ptr->z ].word = color_palette_ptr[ voxel_ptr->color_index - 1 ];
 
 		// Обновление количества вокселей в буфере
-		if ( voxel_ptr->z >= vb_id_ptr->count )
+		if ( vb_id_ptr->count < voxel_ptr->z )
 			vb_id_ptr->count = ( voxel_ptr->z + 1 );
 
 		// Обновление высоты модели
-		if ( voxel_ptr->z > model_ptr->size_z )
+		if ( model_ptr->size_z < voxel_ptr->z )
 			model_ptr->size_z = ( voxel_ptr->z + 1 );
-	}	// for voxel
+
+lb_create_model_while_end:
+		// Переход к следующему вокселю
+		voxel_ptr++;
+	}	// while
 
 	// Выделение памяти под ячейки модели
-	model_ptr->cell = malloc( model_flat_size * sizeof( cell_s ) );
+	model_ptr->cell = calloc( model_flat_size, sizeof( cell_s ) );
 
 	// Проверка выделения памяти
 	if ( !model_ptr->cell ) {
@@ -579,26 +608,28 @@ bool vv_vox_create_model( vox_model_s *vox_model_ptr, model_s *model_ptr ) {
 	memset( model_ptr->cell, 0x00, model_flat_size * sizeof( cell_s ) );
 
 	// Цикл по ячейкам модели
-	for ( uint16_t x = 0; x < model_ptr->size_x; x++ )
-		for ( uint16_t y = 0; y < model_ptr->size_y; y++ ) {
-			// Получение id ячейки
-			uint32_t id = ( y * model_ptr->size_y ) + x;
+	for ( uint32_t id = 0; id < model_flat_size; id++ ) {
+		// Получение указателя на ячейку
+		cell_s *cell_ptr = ( model_ptr->cell + id );
 
-			// Получение указателя на ячейку
-			cell_s *cell_ptr = &( model_ptr->cell[ id ] );
+		// Преобразование буфера вокселей в ячейку
+		vv_write_vb_to_cell( ( vb_ptr + id ), cell_ptr );
 
-			// Преобразование буфера вокселей в ячейку
-			vv_write_vb_to_cell( &( vb_ptr[ id ] ), cell_ptr );
+		// Замена нулевого цвета на прозрачный
+		vv_cell_update_null( cell_ptr );
 
-			// Оптимизация ячейки
-			vv_cell_optimize( cell_ptr );
+		// Оптимизация ячейки
+		vv_cell_optimize( cell_ptr );
 
-			// Замена нулевого цвета на прозрачный
-			vv_cell_update_null( cell_ptr );
-
-			// Формирование нулевого сегмента для установки высоты.
-			vv_cell_push_front( cell_ptr, 1 );
-		}	// for
+		// Формирование нулевого сегмента для установки высоты
+		if ( !vv_cell_push_front( cell_ptr, 1 ) ) {
+#ifdef VOX_PRINT_DEBUG
+			printf( "vox create model: push height segment fail. id: %u\n", id );
+#endif // VOX_PRINT_DEBUG
+			create_result = false;
+			goto lb_create_model_end;
+		}	// if vv_cell_push
+	}	// for id
 
 lb_create_model_end:
 	return create_result;

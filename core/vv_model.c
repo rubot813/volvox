@@ -1,7 +1,7 @@
 #include "vv_model.h"
 
 cell_s* vv_model_get_cell( model_s *model_ptr, uint16_t x, uint16_t y ) {
-	return &( model_ptr->cell[ ( y * model_ptr->size_y ) + x ] );
+	return &( model_ptr->cell[ ( y * model_ptr->size_x ) + x ] );
 }	// vv_model_get_cell
 
 uint16_t vv_model_get_cell_count( model_s *model_ptr ) {

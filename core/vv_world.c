@@ -44,7 +44,7 @@ void vv_set_world( world_s *world_ptr ) {
 }	// vv_set_world
 
 cell_s* vv_world_get_cell( uint16_t x, uint16_t y ) {
-	return &( _world_ptr->cell[ ( y * _world_ptr->size_y ) + x ] );
+	return &( _world_ptr->cell[ ( y * _world_ptr->size_x ) + x ] );
 }	// vv_world_get_cell
 
 void vv_cell_calc_height( cell_s *cell_ptr ) {
