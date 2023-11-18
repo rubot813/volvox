@@ -69,6 +69,104 @@ bool vv_model_merge( model_s *model_ptr, bool ow_flag, bool opt_flag, merge_mode
 	return merge_result;
 }	// vv_model_merge
 
+// Внутренняя функция копирования заголовков модели.
+// Осуществляет копирование позиции, размеров и высоты модели.
+static void _model_copy_header( model_s *src_model_ptr, model_s *dst_model_ptr ) {
+	// Копирование позиции модели
+	dst_model_ptr->position_x	= src_model_ptr->position_x;
+	dst_model_ptr->position_y	= src_model_ptr->position_y;
+	dst_model_ptr->_position_h	= src_model_ptr->_position_h;
+
+	// Копирование размеров модели
+	dst_model_ptr->size_x = src_model_ptr->size_x;
+	dst_model_ptr->size_y = src_model_ptr->size_y;
+
+	// Копирование высоты модели
+	dst_model_ptr->size_z = src_model_ptr->size_z;
+}	// _model_copy_header
+
+bool vv_model_copy( model_s *src_model_ptr, model_s *dst_model_ptr ) {
+	// Результат копирования модели
+	bool copy_result = true;
+
+	// Проверка отсутствия выделенной памяти под ячйки модели dst
+	if ( dst_model_ptr->cell ) {
+		copy_result = false;
+		goto lb_model_copy_end;
+	}	// if dst cell
+
+	// Получение количества ячеек модели src
+	uint16_t src_cell_count = vv_model_get_cell_count( src_model_ptr );
+
+	// Выделение памяти под ячейки модели
+	dst_model_ptr->cell = calloc( src_cell_count, sizeof( cell_s ) );
+
+	// Проверка выделения памяти под ячейки модели
+	if ( !dst_model_ptr->cell ) {
+		copy_result = false;
+		goto lb_model_copy_end;
+	}	// if dst cell
+
+	// Копирование заголовков модели src в dst
+	_model_copy_header( src_model_ptr, dst_model_ptr );
+
+	// Копирование ячеек модели
+	memcpy( dst_model_ptr->cell, src_model_ptr->cell, src_cell_count * sizeof( cell_s ) );
+
+lb_model_copy_end:
+	return copy_result;
+}	// vv_model_copy
+
+bool vv_model_rotate_90deg( model_s *src_model_ptr, model_s *dst_model_ptr, bool direction ) {
+	// Результат вращения модели
+	bool rotate_result = true;
+
+	// Проверка отсутствия выделенной памяти под ячйки модели dst
+	if ( dst_model_ptr->cell ) {
+		rotate_result = false;
+		goto lb_model_rotate_90deg_end;
+	}	// if dst cell
+
+	// Получение количества ячеек модели src
+	uint16_t src_cell_count = vv_model_get_cell_count( src_model_ptr );
+
+	// Выделение памяти под ячейки модели
+	dst_model_ptr->cell = calloc( src_cell_count, sizeof( cell_s ) );
+
+	// Проверка выделения памяти под ячейки модели
+	if ( !dst_model_ptr->cell ) {
+		rotate_result = false;
+		goto lb_model_rotate_90deg_end;
+	}	// if dst cell
+
+	// Копирование позиции модели src в dst
+	dst_model_ptr->position_x	= src_model_ptr->position_x;
+	dst_model_ptr->position_y	= src_model_ptr->position_y;
+	dst_model_ptr->_position_h	= src_model_ptr->_position_h;
+
+	// Копирование и свап размеров модели src в dst
+	dst_model_ptr->size_x = src_model_ptr->size_y;
+	dst_model_ptr->size_y = src_model_ptr->size_x;
+	dst_model_ptr->size_z = src_model_ptr->size_z;
+
+	for ( uint8_t x = 0; x < dst_model_ptr->size_x; x++ )
+		for ( uint8_t y = 0; y < dst_model_ptr->size_y; y++ ) {
+			// Получение указателя на ячейку dst
+			cell_s *dst_cell_ptr = vv_model_get_cell( dst_model_ptr, x, y );
+
+			// Получение указателя на ячейку src исходя из направления вращения
+			cell_s *src_cell_ptr = vv_model_get_cell(	src_model_ptr,
+														( direction ? y : ( dst_model_ptr->size_y - y - 1 ) ),
+														( direction ? ( dst_model_ptr->size_x - x - 1 ) : x ) );
+
+			// Копирование ячейки src в dst
+			*dst_cell_ptr = *src_cell_ptr;
+		}	// for
+
+lb_model_rotate_90deg_end:
+	return rotate_result;
+}	// vv_model_rotate_90deg
+
 void vv_model_create_cube( model_s *model_ptr, color_u color, uint8_t size ) {
 	// Инициализация координат модели
 	model_ptr->position_x	= 0;
